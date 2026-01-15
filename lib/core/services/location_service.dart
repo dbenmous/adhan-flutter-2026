@@ -1,6 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:adhan/adhan.dart';
 import 'settings_service.dart';
+import 'package:geocoding/geocoding.dart';
 import 'prayer_time_service.dart';
 
 class LocationService {
@@ -84,5 +85,21 @@ class LocationService {
       return Coordinates(settings.latitude!, settings.longitude!);
     }
     return Coordinates(21.4225, 39.8262); // Mecca
+  }
+
+  Future<String> getLocationName(Coordinates coords) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        coords.latitude,
+        coords.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        return "${place.locality ?? ''}, ${place.country ?? ''}";
+      }
+      return "Unknown Location";
+    } catch (e) {
+      return "Unknown Location";
+    }
   }
 }

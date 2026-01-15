@@ -24,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic>? _nextPrayerData;
   Timer? _timer;
   Duration _currentCountdown = Duration.zero;
+  String _locationName = 'Loading...';
 
   @override
   void initState() {
@@ -39,6 +40,11 @@ class _HomePageState extends State<HomePage> {
   Future<PrayerTimes?> _loadPrayerTimes() async {
     try {
       final coords = await _locationService.getCurrentLocation();
+      // Fetch name in parallel or sequence
+      _locationService.getLocationName(coords).then((name) {
+        if (mounted) setState(() => _locationName = name);
+      });
+
       final settings = _settingsService.getSettings();
       final times = await _prayerService.calculatePrayerTimes(coords, settings);
       
@@ -229,7 +235,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const Spacer(),
                         Text(
-                          "My Location", // TODO: Get name
+                          _locationName,
                           style: GoogleFonts.outfit(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 16,

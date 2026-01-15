@@ -21,6 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
   String _selectedLanguage = 'English';
   String _calculationMethod = 'MuslimWorldLeague';
+  String _locationName = 'Loading...';
 
   @override
   void initState() {
@@ -30,8 +31,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = SettingsService().getSettings();
+    String locName = 'Unknown';
+    if (settings.latitude != null && settings.longitude != null) {
+       locName = await LocationService().getLocationName(
+          Coordinates(settings.latitude!, settings.longitude!)
+       );
+    }
+
     setState(() {
       _calculationMethod = settings.calculationMethodKey;
+      _locationName = locName;
     });
   }
 
@@ -86,7 +95,8 @@ class _SettingsPageState extends State<SettingsPage> {
             'qatar',
             'singapore',
             'tehran',
-            'turkey'
+            'turkey',
+            'morocco'
           ].map((key) => SimpleDialogOption(
             onPressed: () {
               Navigator.pop(context);
@@ -162,7 +172,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 icon: Icons.location_on_outlined,
                 iconColor: Colors.green,
                 title: 'Location',
-                value: 'London, UK',
+                value: _locationName,
                 onTap: () {}, 
               ),
                const SizedBox(height: 12),
