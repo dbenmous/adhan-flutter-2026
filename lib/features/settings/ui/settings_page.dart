@@ -9,6 +9,10 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/prayer_time_service.dart';
 
+import 'calculation_methods_page.dart';
+import 'manual_corrections_page.dart';
+import 'location_page.dart';
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -22,6 +26,11 @@ class _SettingsPageState extends State<SettingsPage> {
   String _selectedLanguage = 'English';
   String _calculationMethod = 'MuslimWorldLeague';
   String _locationName = 'Loading...';
+  
+  // New State variables for UI preview
+  String _madhab = 'Shafi';
+  String _highLatitude = 'Middle of Night';
+  String _dstMode = 'Auto';
 
   @override
   void initState() {
@@ -39,74 +48,121 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     setState(() {
-      _calculationMethod = settings.calculationMethodKey;
+      _calculationMethod = settings.autoCalculationMethod ? 'Auto' : settings.calculationMethodKey;
       _locationName = locName;
+      _madhab = settings.madhab == 'hanafi' ? 'Hanafi' : 'Shafi';
+      _highLatitude = settings.highLatitudeRule.replaceAll('_', ' ').toUpperCase(); // basic formatting
+      _dstMode = settings.dstMode.toUpperCase();
     });
   }
 
-  Future<void> _updateCalculationMethod(String methodKey) async {
-    // a) Save new method
-    await SettingsService().setCalculationMethod(methodKey);
-    
-    setState(() {
-      _calculationMethod = methodKey;
-    });
-
-    // b) Cancel existing
-    await NotificationService().cancelAllPrayerNotifications();
-
-    // c) Recalculate
-    final locationService = LocationService();
-    final prayerService = PrayerTimeService();
-    final settingsService = SettingsService();
-    // Refresh settings explicitly to get the latest
-    final currentSettings = settingsService.getSettings();
-    final coords = await locationService.getCurrentLocation();
-
-    // Use the model which now contains the new methodKey we just saved
-    final prayerTimes = await prayerService.calculatePrayerTimes(coords, currentSettings);
-
-    // d) Schedule new
-    await NotificationService().scheduleAllPrayerNotifications(prayerTimes);
-
-    // e) Show confirmation
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Prayer times updated for $methodKey')),
-      );
-    }
+  // Helper to refresh and trigger recalculations
+  Future<void> _refreshSettings() async {
+    await _loadSettings();
+    // In a real app, logic to reschedule notifications would go here or triggered by service listener
+    // For now, let's just reload UI state
   }
 
-  void _showCalculationMethodDialog() {
+  void _showJuristicDialog() {
     showDialog(
       context: context,
-      builder: (context) {
-        return SimpleDialog(
-          title: const Text('Select Calculation Method'),
-          children: [
-            'muslim_world_league',
-            'egyptian',
-            'karachi',
-            'umm_al_qura',
-            'dubai',
-            'moonsighting_committee',
-            'north_america',
-            'kuwait', 
-            'qatar',
-            'singapore',
-            'tehran',
-            'turkey',
-            'morocco'
-          ].map((key) => SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(context);
-              _updateCalculationMethod(key); // Simplified key mapping
+      builder: (context) => SimpleDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        title: const Text('Juristic Method'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () async {
+               await SettingsService().setMadhab('shafi');
+               Navigator.pop(context);
+               _refreshSettings();
             },
-            child: Text(key.replaceAll('_', ' ').toUpperCase()),
-          )).toList(),
-        );
-      },
+            child: const Text('Standard (Shafi, Maliki, Hanbali)'),
+          ),
+          SimpleDialogOption(
+             onPressed: () async { 
+               await SettingsService().setMadhab('hanafi'); 
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Hanafi'),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _showHighLatitudeDialog() {
+     showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        title: const Text('High Latitude Rule'),
+        children: [
+          SimpleDialogOption(
+             onPressed: () async {
+               await SettingsService().setHighLatitudeRule('middle_of_night');
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Middle of the Night'),
+          ),
+          SimpleDialogOption(
+             onPressed: () async {
+               await SettingsService().setHighLatitudeRule('seventh_of_night');
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('One Seventh of the Night'),
+          ),
+           SimpleDialogOption(
+             onPressed: () async {
+               await SettingsService().setHighLatitudeRule('twilight_angle');
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Twilight Angle'),
+          ),
+        ],
+      ),
+    );   
+  }
+
+  void _showDstDialog() {
+      showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        title: const Text('Daylight Saving'),
+        children: [
+          SimpleDialogOption(
+             onPressed: () async {
+               await SettingsService().setDstSettings(mode: 'auto', offset: 0);
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Automatic'),
+          ),
+          SimpleDialogOption(
+             onPressed: () async {
+               // Manual 1 hour
+               await SettingsService().setDstSettings(mode: 'manual', offset: 60);
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Manual (+1 Hour)'),
+          ),
+           SimpleDialogOption(
+             onPressed: () async {
+               // Manual 0
+               await SettingsService().setDstSettings(mode: 'manual', offset: 0);
+               Navigator.pop(context);
+               _refreshSettings();
+             },
+             child: const Text('Manual (Off)'),
+          ),
+        ],
+      ),
+    ); 
   }
 
   @override
@@ -133,80 +189,173 @@ class _SettingsPageState extends State<SettingsPage> {
               // General Section
               _buildSectionHeader('General'),
               const SizedBox(height: 8),
-              _buildSettingsTile(
-                isDark,
-                icon: Icons.language,
-                iconColor: Colors.blue,
-                title: 'Language',
-                value: _selectedLanguage,
-                onTap: () {}, // TODO: Show language dialog
-              ),
-              const SizedBox(height: 12),
-              _buildSettingsTile(
-                isDark,
-                icon: Icons.calculate_outlined,
-                iconColor: Colors.orange,
-                title: 'Calculation Method',
-                value: _calculationMethod.replaceAll('_', ' ').toUpperCase(),
-                onTap: _showCalculationMethodDialog,
-              ),
+              _buildSettingsGroup(isDark, [
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.language,
+                  iconColor: Colors.blue,
+                  title: 'Language',
+                  value: _selectedLanguage,
+                  onTap: () {}, // TODO: Show language dialog
+                  showDivider: false,
+                ),
+              ]),
               
+              const SizedBox(height: 24),
+
+              // Calculation Section
+              _buildSectionHeader('Calculation'),
+              const SizedBox(height: 8),
+              _buildSettingsGroup(isDark, [
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.calculate_outlined,
+                  iconColor: Colors.orange,
+                  title: 'Calculation Methods',
+                  value: _calculationMethod.replaceAll('_', ' ').toUpperCase(),
+                  onTap: () => Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (_) => const CalculationMethodsPage())
+                  ),
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.balance_outlined,
+                  iconColor: Colors.teal,
+                  title: 'Juristic',
+                  value: _madhab,
+                  onTap: _showJuristicDialog,
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.public,
+                  iconColor: Colors.indigo,
+                  title: 'Higher Latitudes',
+                  value: _highLatitude,
+                  onTap: _showHighLatitudeDialog,
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.tune,
+                  iconColor: Colors.brown,
+                  title: 'Manual Corrections',
+                  value: 'Adjust',
+                  onTap: () => Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (_) => const ManualCorrectionsPage())
+                  ),
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.schedule,
+                  iconColor: Colors.redAccent,
+                  title: 'Daylight Saving',
+                  value: _dstMode,
+                  onTap: _showDstDialog,
+                  showDivider: false, // Last item
+                ),
+              ]),
+
               const SizedBox(height: 24),
               
               // Preferences Section
               _buildSectionHeader('Preferences'),
               const SizedBox(height: 8),
-              _buildSwitchTile(
-                isDark,
-                title: 'Notifications',
-                icon: Icons.notifications_active_rounded,
-                iconColor: Colors.amber,
-                value: _notificationsEnabled,
-                onChanged: (val) {
-                  setState(() => _notificationsEnabled = val);
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildSettingsTile(
-                isDark,
-                icon: Icons.location_on_outlined,
-                iconColor: Colors.green,
-                title: 'Location',
-                value: _locationName,
-                onTap: () {}, 
-              ),
-               const SizedBox(height: 12),
-              _buildSettingsTile(
-                isDark,
-                icon: Icons.app_settings_alt_rounded,
-                iconColor: Colors.purple,
-                title: 'App Icon',
-                value: 'Default',
-                onTap: () {}, 
-              ),
+              _buildSettingsGroup(isDark, [
+                 // Custom switch handling inside group
+                 Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          color: Colors.amber,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'Notifications',
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      CustomSwitch(
+                        value: _notificationsEnabled,
+                        onChanged: (val) {
+                          setState(() => _notificationsEnabled = val);
+                        },
+                        activeColor: Theme.of(context).primaryColor,
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1, 
+                    thickness: 0.5,
+                    color: isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0)
+                  ),
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.location_on_outlined,
+                  iconColor: Colors.green,
+                  title: 'Location',
+                  value: _locationName,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LocationPage()),
+                    ).then((_) => _loadSettings());
+                  }, 
+                ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.app_settings_alt_rounded,
+                  iconColor: Colors.purple,
+                  title: 'App Icon',
+                  value: 'Default',
+                  onTap: () {}, 
+                  showDivider: false
+                ),
+              ]),
 
               const SizedBox(height: 24),
 
               // About Section
               _buildSectionHeader('About'),
               const SizedBox(height: 8),
-              _buildLinkTile(
-                isDark: isDark,
-                icon: Icons.privacy_tip_outlined,
-                iconColor: Colors.grey,
-                title: 'Privacy Policy',
-                onTap: () {}, // TODO: Launch URL
-              ),
-               const SizedBox(height: 12),
-              _buildLinkTile(
-                isDark: isDark,
-                icon: Icons.star_rate_rounded,
-                iconColor: Colors.amber,
-                title: 'Rate Us',
-                onTap: () async {
-                   // Placeholder for rating logic
-                }, 
-              ),
+              _buildSettingsGroup(isDark, [
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.privacy_tip_outlined,
+                  iconColor: Colors.grey,
+                  title: 'Privacy Policy',
+                  value: '',
+                  onTap: () {}, 
+                ),
+                _buildGroupTile(
+                  isDark,
+                   icon: Icons.star_rate_rounded,
+                  iconColor: Colors.amber,
+                  title: 'Rate Us',
+                  value: '',
+                  onTap: () {}, 
+                  showDivider: false
+                ),
+              ]),
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -390,6 +539,89 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSettingsGroup(bool isDark, List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildGroupTile(
+    bool isDark, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required VoidCallback onTap,
+    bool showDivider = true,
+  }) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(30), // Match group radius for ripple
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.12),
+                    shape: BoxShape.circle, // Circular shape
+                  ),
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.grey[400],
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16), // Padding from edges
+            child: Divider(
+              height: 1,
+              thickness: 0.5, // Thin line
+              color: isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0),
+            ),
+          ),
+      ],
     );
   }
 }

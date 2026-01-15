@@ -115,12 +115,12 @@ class PrayerTimeService {
       case 'turkey':
         return CalculationMethod.turkey.getParameters();
       case 'morocco':
-         // Morocco: Fajr 19 degrees, Isha 17 degrees (or 1.5h after Maghrib in some regions)
-         // Standard Ministry of Habous: Fajr 19°, Isha 17°.
-         // Using MWL as base and overriding angles.
+         // Morocco: Actually aligns closer to MWL (18°) for Fajr in many apps.
+         // Ministry also adds +5 min to Maghrib constant.
          final params = CalculationMethod.muslim_world_league.getParameters();
-         params.fajrAngle = 19.0;
+         params.fajrAngle = 18.0;
          params.ishaAngle = 17.0;
+         params.adjustments.maghrib = 5; // Crucial for Morocco
          return params;
       case 'muslim_world_league':
       default:

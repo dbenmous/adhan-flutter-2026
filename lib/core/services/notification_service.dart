@@ -14,7 +14,7 @@ class NotificationService {
   Future<void> init() async {
     await AwesomeNotifications().initialize(
       // set the icon to null if you want to use the default app icon
-      'resource://drawable/res_app_icon',
+      null,
       [
         NotificationChannel(
           channelGroupKey: 'adhan_channel_group',
@@ -54,6 +54,7 @@ class NotificationService {
 
   Future<void> scheduleAllPrayerNotifications(PrayerTimes times) async {
     await cancelAllPrayerNotifications();
+    debugPrint('=== SCHEDULING PRAYER NOTIFICATIONS ===');
 
     final now = DateTime.now();
     final prayers = [
@@ -66,6 +67,7 @@ class NotificationService {
 
     for (var prayer in prayers) {
       final time = prayer['time'] as DateTime;
+      debugPrint('Prayer: ${prayer['name']} at $time (isAfter now: ${time.isAfter(now)})');
       if (time.isAfter(now)) {
         await _scheduleNotification(
           id: prayer['id'] as int,
@@ -73,8 +75,12 @@ class NotificationService {
           body: 'It is time for ${prayer['name']}',
           scheduledTime: time,
         );
+        debugPrint('  -> SCHEDULED: ${prayer['name']} for $time');
+      } else {
+        debugPrint('  -> SKIPPED (past)');
       }
     }
+    debugPrint('=== SCHEDULING COMPLETE ===');
   }
 
   Future<void> _scheduleNotification({

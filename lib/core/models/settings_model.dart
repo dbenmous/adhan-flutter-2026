@@ -10,6 +10,12 @@ class SettingsModel {
   final double? latitude;
   final double? longitude;
   final DateTime? lastUpdated;
+  final bool isManualLocation;
+  final String? manualLocationName;
+
+  final bool autoCalculationMethod;
+  final String dstMode; // 'auto', 'manual'
+  final int dstOffset; // minutes
 
   SettingsModel({
     this.calculationMethodKey = 'muslim_world_league',
@@ -18,9 +24,14 @@ class SettingsModel {
     this.manualCorrectionsMinutes = const {},
     this.hijriAdjustmentDays = 0,
     this.isDstEnabled = false,
+    this.autoCalculationMethod = true,
+    this.dstMode = 'auto',
+    this.dstOffset = 0,
     this.latitude,
     this.longitude,
     this.lastUpdated,
+    this.isManualLocation = false,
+    this.manualLocationName,
   });
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
@@ -33,11 +44,16 @@ class SettingsModel {
           const {},
       hijriAdjustmentDays: json['hijriAdjustmentDays'] ?? 0,
       isDstEnabled: json['isDstEnabled'] ?? false,
+      autoCalculationMethod: json['autoCalculationMethod'] ?? true,
+      dstMode: json['dstMode'] ?? 'auto',
+      dstOffset: json['dstOffset'] ?? 0,
       latitude: json['latitude'],
       longitude: json['longitude'],
       lastUpdated: json['lastUpdated'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['lastUpdated'])
           : null,
+      isManualLocation: json['isManualLocation'] ?? false,
+      manualLocationName: json['manualLocationName'],
     );
   }
 
@@ -49,9 +65,14 @@ class SettingsModel {
       'manualCorrectionsMinutes': manualCorrectionsMinutes,
       'hijriAdjustmentDays': hijriAdjustmentDays,
       'isDstEnabled': isDstEnabled,
+      'autoCalculationMethod': autoCalculationMethod,
+      'dstMode': dstMode,
+      'dstOffset': dstOffset,
       'latitude': latitude,
       'longitude': longitude,
       'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
+      'isManualLocation': isManualLocation,
+      'manualLocationName': manualLocationName,
     };
   }
 
@@ -62,9 +83,14 @@ class SettingsModel {
     Map<String, int>? manualCorrectionsMinutes,
     int? hijriAdjustmentDays,
     bool? isDstEnabled,
+    bool? autoCalculationMethod,
+    String? dstMode,
+    int? dstOffset,
     double? latitude,
     double? longitude,
     DateTime? lastUpdated,
+    bool? isManualLocation,
+    String? manualLocationName,
   }) {
     return SettingsModel(
       calculationMethodKey: calculationMethodKey ?? this.calculationMethodKey,
@@ -73,9 +99,14 @@ class SettingsModel {
       manualCorrectionsMinutes: manualCorrectionsMinutes ?? this.manualCorrectionsMinutes,
       hijriAdjustmentDays: hijriAdjustmentDays ?? this.hijriAdjustmentDays,
       isDstEnabled: isDstEnabled ?? this.isDstEnabled,
+      autoCalculationMethod: autoCalculationMethod ?? this.autoCalculationMethod,
+      dstMode: dstMode ?? this.dstMode,
+      dstOffset: dstOffset ?? this.dstOffset,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      isManualLocation: isManualLocation ?? this.isManualLocation,
+      manualLocationName: manualLocationName ?? this.manualLocationName,
     );
   }
 }

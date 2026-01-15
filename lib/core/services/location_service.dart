@@ -19,8 +19,8 @@ class LocationService {
     // nothing to init for now
   }
 
-  /// Gets current location with timeout and fallback to saved settings.
-  Future<Coordinates> getCurrentLocation() async {
+  /// Forces a fresh GPS location fetch, ignoring cache and manual settings.
+  Future<Coordinates> getGpsLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -39,8 +39,45 @@ class LocationService {
         return _getSavedLocationOrMecca();
       }
 
-      // Check cache validity (1 hour)
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 30),
+      );
+      
+      return Coordinates(position.latitude, position.longitude);
+    } catch (e) {
+      return _getSavedLocationOrMecca();
+    }
+  }
+
+  /// Gets current location with timeout and fallback to saved settings.
+  Future<Coordinates> getCurrentLocation() async {
+    try {
       final settings = _settingsService.getSettings();
+      
+      // If manual location is set, use it directly
+      if (settings.isManualLocation && settings.latitude != null) {
+        return Coordinates(settings.latitude!, settings.longitude!);
+      }
+
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return _getSavedLocationOrMecca();
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return _getSavedLocationOrMecca();
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return _getSavedLocationOrMecca();
+      }
+
+      // Check cache validity (1 hour)
       if (settings.lastUpdated != null &&
           DateTime.now().difference(settings.lastUpdated!).inHours < 1 &&
           settings.latitude != null) {

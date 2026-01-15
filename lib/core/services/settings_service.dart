@@ -68,4 +68,51 @@ class SettingsService {
       lastUpdated: DateTime.now(),
     ));
   }
+
+  Future<void> setMadhab(String madhab) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(madhab: madhab));
+  }
+  
+  Future<void> setHighLatitudeRule(String rule) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(highLatitudeRule: rule));
+  }
+
+  Future<void> setManualCorrections(Map<String, int> corrections) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(manualCorrectionsMinutes: corrections));
+  }
+
+  Future<void> setDstSettings({required String mode, required int offset}) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(dstMode: mode, dstOffset: offset));
+  }
+  
+  Future<void> setCalculationMethodOptions({required String methodKey, required bool auto}) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(
+        calculationMethodKey: methodKey,
+        autoCalculationMethod: auto
+    ));
+  }
+
+  Future<void> setManualLocation(double lat, double lng, String name) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(
+      latitude: lat,
+      longitude: lng,
+      isManualLocation: true,
+      manualLocationName: name,
+      lastUpdated: DateTime.now(),
+    ));
+  }
+
+  Future<void> clearManualLocation() async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(
+      isManualLocation: false,
+      manualLocationName: null,
+    ));
+  }
 }
