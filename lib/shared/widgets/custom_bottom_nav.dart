@@ -22,8 +22,8 @@ class CustomBottomNav extends StatelessWidget {
         // Tablet scaling factors
         final double iconSize = isTablet ? 28 : 24;
         final double textSize = isTablet ? 12 : 10;
-        final double verticalPadding = isTablet ? 10 : 8;
-        final double containerVerticalPadding = isTablet ? 10 : 6;
+        final double verticalPadding = isTablet ? 8 : 6;
+        final double containerVerticalPadding = isTablet ? 6 : 2;
         final double marginHorizontal = isTablet ? 80 : 16;
 
         final items = [
@@ -51,11 +51,11 @@ class CustomBottomNav extends StatelessWidget {
 
         return SafeArea(
           child: Container(
-            margin: EdgeInsets.fromLTRB(marginHorizontal, 0, marginHorizontal, 12),
+            margin: EdgeInsets.fromLTRB(marginHorizontal, 0, marginHorizontal, 24),
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF1E1E1E).withAlpha(242)
-                  : theme.colorScheme.surface.withAlpha(240),
+                  ? const Color(0xFF1E1E1E).withOpacity(0.75)
+                  : theme.colorScheme.surface.withOpacity(0.75),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
                 color: theme.colorScheme.primary.withAlpha(30),
@@ -73,12 +73,12 @@ class CustomBottomNav extends StatelessWidget {
               builder: (context, constraints) {
                 final double totalWidth = constraints.maxWidth;
                 // Subtract horizontal padding from the total width available for items
-                final double availableWidth = totalWidth - 24; // 12 padding each side from container
+                final double availableWidth = totalWidth - 8; // 4 padding each side from container
                 final int itemCount = items.length;
                 final double itemWidth = availableWidth / itemCount;
 
                 return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: containerVerticalPadding),
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: containerVerticalPadding),
                   child: Stack(
                     children: [
                       // Layer 1: Sliding Active Indicator

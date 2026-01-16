@@ -1,6 +1,7 @@
 import 'package:adhan/adhan.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/material.dart'; // For debugPrint and DateUtils
 import '../models/settings_model.dart';
 import 'custom_calculation_methods.dart';
 
@@ -170,24 +171,41 @@ class PrayerTimeService {
     ) / 1000;
   }
 
+  // Cache to store monthly calculations: "Year|Month|Lat|Lng|Method..." -> List<PrayerTimes>
+  final Map<String, List<PrayerTimes>> _monthlyCache = {};
+
+  /// Returns cached or calculated prayer times for the entire month.
+  Future<List<PrayerTimes>> getMonthlyPrayerTimes(
+      Coordinates coordinates, SettingsModel settings, DateTime monthDate) async {
+    
+    // Create a unique cache key based on parameters that affect calculation
+    final key = "${monthDate.year}|${monthDate.month}|"
+        "${coordinates.latitude.toStringAsFixed(4)}|${coordinates.longitude.toStringAsFixed(4)}|"
+        "${settings.calculationMethodKey}|${settings.madhab}|${settings.highLatitudeRule}|"
+        "${settings.manualCorrectionsMinutes.toString()}|${settings.isDstEnabled}";
+
+    if (_monthlyCache.containsKey(key)) {
+      debugPrint("[PrayerTimeService] Cache HIT for $key");
+      return _monthlyCache[key]!;
+    }
+
+    debugPrint("[PrayerTimeService] Cache MISS. Calculating for $key");
+    final daysInMonth = DateUtils.getDaysInMonth(monthDate.year, monthDate.month);
+    List<PrayerTimes> monthTimes = [];
+
+    for (int i = 1; i <= daysInMonth; i++) {
+      final date = DateTime(monthDate.year, monthDate.month, i);
+      final times = await calculatePrayerTimes(coordinates, settings, date: date);
+      monthTimes.add(times);
+    }
+
+    _monthlyCache[key] = monthTimes;
+    return monthTimes;
+  }
+
   /// Hijri Date Helper
   HijriCalendar getHijriDate(DateTime date, int adjustmentDays) {
-    final hDate = HijriCalendar.fromDate(date);
-    // Apply adjustment (simple day addition)
-    // Note: HijriCalendar doesn't support 'add days' directly easily that shifts months correctly in one go
-    // without re-calculation. However, we can approximate or use logic.
-    // Actually, HijriCalendar.fromDate does the conversion.
-    // To 'adjust', we manipulate the source DateTime? 
-    // Or we adjust the result? 
-    // Hijri adjustment usually means "Visual" adjustment (Today is 1st, but user wants to see 2nd).
-    // So we assume the moon sighting diff -> +/- days.
-    // We can add the days to the input date? No, that changes the Gregorain date association.
-    // Better: Format the Hijri date, but getting a semantic Object is harder.
-    // Let's modify the hDate.hDay?
-    // HijriCalendar has valid() checks. 
-    // Robust way: Convert (Date + adjustment) -> Hijri? 
-    // No, 14th Feb + 1 day = 15th Feb. 14th Feb might be 1st Ramadan. 15th might be 2nd. Make sense.
-    // So we shift the source date by X days to get the "Effective Hikri" date the user expects.
+    // ... existing logic ...
     return HijriCalendar.fromDate(date.add(Duration(days: adjustmentDays))); 
   }
 }

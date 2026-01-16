@@ -8,12 +8,14 @@ import '../../../core/services/settings_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/prayer_time_service.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Added import for SharedPreferences
 
 import 'calculation_methods_page.dart';
 import 'manual_corrections_page.dart';
 import 'manual_corrections_page.dart';
 import 'location_page.dart';
 import 'juristic_method_page.dart';
+import 'app_icon_page.dart'; // Add import
 import 'notification_settings_page.dart';
 import 'sound_selection_page.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
@@ -40,6 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _dstMode = 'Auto';
   String _adhanSoundName = 'Default';
   bool? _isBatteryOptimized; // null=loading, true=unrestricted(good), false=restricted(bad)
+  String _appIconName = 'Default'; // Add state variable
 
   @override
   void initState() {
@@ -56,6 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = SettingsService().getSettings();
+    final prefs = await SharedPreferences.getInstance(); // Get prefs
     
     // Check battery optimization status
     _isBatteryOptimized = await DisableBatteryOptimization.isBatteryOptimizationDisabled;
@@ -78,6 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _notificationsEnabled = settings.areNotificationsEnabled;
       // Basic formatting for display
       _adhanSoundName = settings.adhanSound.replaceAll('adhan_', '').replaceAll('_', ' ').toUpperCase();
+      _appIconName = prefs.getString('app_icon_name') ?? 'Default'; // Load icon name
     });
   }
 
@@ -348,8 +353,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.app_settings_alt_rounded,
                   iconColor: Colors.purple,
                   title: 'App Icon',
-                  value: 'Default',
-                  onTap: () {}, 
+                  value: _appIconName,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AppIconPage()),
+                    ).then((_) => _loadSettings());
+                  }, 
                   showDivider: false
                 ),
               ]),

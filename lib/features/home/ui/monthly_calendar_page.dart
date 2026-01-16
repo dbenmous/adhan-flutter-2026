@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:adhan/adhan.dart';
 import 'package:intl/intl.dart';
 import '../../../core/services/prayer_time_service.dart';
-import '../../../core/services/location_service.dart';
 import '../../../core/services/settings_service.dart';
 
 class DailyPrayer {
@@ -21,11 +20,13 @@ class MonthlyCalendarPage extends StatefulWidget {
 
 class _MonthlyCalendarPageState extends State<MonthlyCalendarPage> {
   final _prayerService = PrayerTimeService();
-  final _locationService = LocationService();
   final _settingsService = SettingsService();
-
+  
   late Future<List<DailyPrayer>> _monthPrayerTimes;
   final DateTime _now = DateTime.now();
+  
+  // Keys to auto-scroll to specific days
+  final Map<int, GlobalKey> _dayKeys = {};
 
   @override
   void initState() {
@@ -34,18 +35,35 @@ class _MonthlyCalendarPageState extends State<MonthlyCalendarPage> {
   }
 
   Future<List<DailyPrayer>> _loadMonthData() async {
-    final coords = await _locationService.getCurrentLocation();
+    // Optimization: Use saved settings directly. Do NOT await GPS.
+    // If user is here, they likely have a location set (automatic or manual).
     final settings = _settingsService.getSettings();
-    
-    final daysInMonth = DateUtils.getDaysInMonth(_now.year, _now.month);
-    List<DailyPrayer> monthTimes = [];
+    final lat = settings.latitude ?? 21.4225; // Default Mecca if null
+    final lng = settings.longitude ?? 39.8262;
+    final coords = Coordinates(lat, lng);
 
-    for (int i = 1; i <= daysInMonth; i++) {
-      final date = DateTime(_now.year, _now.month, i);
-      final times = await _prayerService.calculatePrayerTimes(coords, settings, date: date);
-      monthTimes.add(DailyPrayer(date, times));
-    }
-    return monthTimes;
+    final monthTimes = await _prayerService.getMonthlyPrayerTimes(coords, settings, _now);
+    
+    // Convert to DailyPrayer list
+    return monthTimes.map((times) {
+      final components = times.dateComponents;
+      final date = DateTime(components.year, components.month, components.day);
+      return DailyPrayer(date, times);
+    }).toList();
+  }
+
+  /// Auto-scroll to today after layout is built
+  void _scrollToToday() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_dayKeys.containsKey(_now.day)) {
+        Scrollable.ensureVisible(
+          _dayKeys[_now.day]!.currentContext!,
+          alignment: 0.5, // Center the item
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
@@ -53,8 +71,8 @@ class _MonthlyCalendarPageState extends State<MonthlyCalendarPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          DateFormat('EEEE, d MMMM yyyy – HH:mm').format(DateTime.now()),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+          DateFormat('MMMM yyyy').format(DateTime.now()), // Simpler Title
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -72,6 +90,15 @@ class _MonthlyCalendarPageState extends State<MonthlyCalendarPage> {
 
           final monthData = snapshot.data!;
           final timeFormat = DateFormat('HH:mm');
+          
+          // Trigger scroll if it's the first build with data
+          if (_dayKeys.isEmpty) {
+             // Initialize keys for scroll targets
+             for (var daily in monthData) {
+               _dayKeys[daily.date.day] = GlobalKey();
+             }
+             _scrollToToday();
+          }
 
           final columnWidths = const {
             0: FlexColumnWidth(1.2), // Date
@@ -112,42 +139,46 @@ class _MonthlyCalendarPageState extends State<MonthlyCalendarPage> {
                 const SizedBox(height: 8),
                 // Scrollable Data Rows
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: monthData.length + 1, // +1 for bottom padding
-                    itemBuilder: (context, index) {
-                      if (index == monthData.length) {
-                        return const SizedBox(height: 100); // Bottom padding
-                      }
-                      final daily = monthData[index];
-                      final dayDate = daily.date;
-                      final times = daily.times;
-                      final isToday = dayDate.day == _now.day && dayDate.month == _now.month;
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        ...monthData.map((daily) {
+                          final dayDate = daily.date;
+                          final times = daily.times;
+                          final isToday = dayDate.day == _now.day && dayDate.month == _now.month;
 
-                      return Table(
-                        columnWidths: columnWidths,
-                        border: TableBorder(
-                          bottom: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-                        ),
-                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                        children: [
-                          TableRow(
-                            decoration: isToday ? BoxDecoration(
-                              color: Theme.of(context).primaryColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ) : null,
-                            children: [
-                              _buildDataCell(dayDate.day.toString(), isToday, isBold: true),
-                              _buildDataCell(timeFormat.format(times.fajr), isToday),
-                              _buildDataCell(timeFormat.format(times.sunrise), isToday, color: Colors.grey),
-                              _buildDataCell(timeFormat.format(times.dhuhr), isToday),
-                              _buildDataCell(timeFormat.format(times.asr), isToday),
-                              _buildDataCell(timeFormat.format(times.maghrib), isToday),
-                              _buildDataCell(timeFormat.format(times.isha), isToday),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
+                          return Container(
+                            key: isToday ? _dayKeys[dayDate.day] : null, // Assign key to today
+                            child: Table(
+                              columnWidths: columnWidths,
+                              border: TableBorder(
+                                bottom: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
+                              ),
+                              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                              children: [
+                                TableRow(
+                                  decoration: isToday ? BoxDecoration(
+                                    color: Theme.of(context).primaryColor.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ) : null,
+                                  children: [
+                                    _buildDataCell(dayDate.day.toString(), isToday, isBold: true),
+                                    _buildDataCell(timeFormat.format(times.fajr), isToday),
+                                    _buildDataCell(timeFormat.format(times.sunrise), isToday, color: Colors.grey),
+                                    _buildDataCell(timeFormat.format(times.dhuhr), isToday),
+                                    _buildDataCell(timeFormat.format(times.asr), isToday),
+                                    _buildDataCell(timeFormat.format(times.maghrib), isToday),
+                                    _buildDataCell(timeFormat.format(times.isha), isToday),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 100), // Bottom padding
+                      ],
+                    ),
                   ),
                 ),
               ],

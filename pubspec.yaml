@@ -41,7 +41,6 @@ dependencies:
   permission_handler: ^12.0.1
   glass: ^2.0.0+2
   adhan: ^2.0.0+1
-  flutter_qiblah: ^3.1.0+1
   geolocator: ^13.0.4
   geocoding: ^3.0.0
   shared_preferences: ^2.5.3
@@ -52,6 +51,9 @@ dependencies:
   disable_battery_optimization: ^1.1.2
   workmanager: ^0.9.0+3
   lottie: ^3.3.1
+  flutter_compass: ^0.8.1
+  vibration: ^3.1.5
+  flutter_dynamic_icon: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -68,7 +70,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon.png"
+  image_path: "assets/launcher_icons/1.png"
   min_sdk_android: 23
   web:
     generate: true
@@ -80,7 +82,7 @@ flutter_launcher_icons:
     image_path: "assets/icon.png"
     icon_size: 48
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_foreground: "assets/launcher_icons/1.png"
 
 
 # For information on the generic Dart part of this file, see the
