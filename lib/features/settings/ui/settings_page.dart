@@ -14,6 +14,8 @@ import 'manual_corrections_page.dart';
 import 'manual_corrections_page.dart';
 import 'location_page.dart';
 import 'juristic_method_page.dart';
+import 'notification_settings_page.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -25,6 +27,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   // Temporary state 
   bool _notificationsEnabled = true;
+  bool _isSystemNotifAllowed = true; // Track actual system permission
   String _selectedLanguage = 'English';
   String _calculationMethod = 'MuslimWorldLeague';
   String _locationName = 'Loading...';
@@ -38,6 +41,13 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+    _checkSystemPermission();
+  }
+
+  void _checkSystemPermission() {
+    AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
+      if (mounted) setState(() => _isSystemNotifAllowed = isAllowed);
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -269,43 +279,24 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSectionHeader('Preferences'),
               const SizedBox(height: 8),
               _buildSettingsGroup(isDark, [
-                 // Custom switch handling inside group
-                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.notifications_active_rounded,
-                          color: Colors.amber,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Notifications',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      CustomSwitch(
-                        value: _notificationsEnabled,
-                        onChanged: (val) async {
-                          setState(() => _notificationsEnabled = val);
-                          await SettingsService().setNotificationsEnabled(val);
-                        },
-                        activeColor: Theme.of(context).primaryColor,
-                      ),
-                    ],
-                  ),
+                _buildGroupTile(
+                  isDark,
+                  icon: Icons.notifications_active_rounded,
+                  iconColor: Colors.amber,
+                  title: 'Notifications',
+                  value: !_isSystemNotifAllowed 
+                      ? 'System permission denied: tap to enable' 
+                      : 'Configure alerts',
+                  valueColor: !_isSystemNotifAllowed ? Colors.orange : null,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationSettingsPage()),
+                    ).then((_) {
+                      _loadSettings();
+                      _checkSystemPermission();
+                    });
+                  },
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -570,6 +561,7 @@ class _SettingsPageState extends State<SettingsPage> {
     required String value,
     required VoidCallback onTap,
     bool showDivider = true,
+    Color? valueColor,
   }) {
     return Column(
       children: [
@@ -603,11 +595,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                 ),
-                Text(
-                  value,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey,
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: valueColor ?? Colors.grey,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 8),

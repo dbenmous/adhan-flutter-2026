@@ -12,15 +12,17 @@ import '../../../core/services/settings_service.dart';
 import '../../../core/models/settings_model.dart';
 import 'monthly_calendar_page.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:awesome_notifications/awesome_notifications.dart';
+import '../../settings/ui/notification_settings_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final PrayerTimeService _prayerService = PrayerTimeService();
   final LocationService _locationService = LocationService();
   final SettingsService _settingsService = SettingsService();
@@ -32,18 +34,36 @@ class _HomePageState extends State<HomePage> {
   Duration _currentCountdown = Duration.zero;
   String _locationName = 'Loading...';
   String _hijriDateString = '';
+  bool _isSystemMuted = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _refreshData();
     _startTimer();
+    checkSystemPermission();
     _settingsSubscription = _settingsService.settingsStream.listen((_) {
       if (mounted) {
         setState(() {
           _refreshData();
         });
       }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Re-check permission when user returns from settings
+      checkSystemPermission();
+    }
+  }
+
+  /// Public method to check system notification permission
+  void checkSystemPermission() {
+    AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
+      if (mounted) setState(() => _isSystemMuted = !isAllowed);
     });
   }
 
@@ -109,6 +129,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _settingsSubscription?.cancel();
     super.dispose();
@@ -182,6 +203,13 @@ class _HomePageState extends State<HomePage> {
                           _buildTopButton('Share', Icons.share_rounded),
                           Row(
                             children: [
+                              // Muted warning icon
+                              if (_isSystemMuted)
+                                IconButton(
+                                  icon: const Icon(Icons.notifications_off, color: Colors.orange),
+                                  onPressed: () => AwesomeNotifications().showNotificationConfigPage(),
+                                  tooltip: 'Notifications Muted',
+                                ),
                               _buildTopButton('Upgrade', null),
                               const SizedBox(width: 8),
                               _buildCircleButton(Icons.more_horiz),
@@ -302,12 +330,12 @@ class _HomePageState extends State<HomePage> {
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       children: [
-                        _buildPrayerCard('Fajr', _formatInTimezone(data.fajr, timeFormatStr), false, false, isNext: nextName == 'Fajr'),
-                        _buildPrayerCard('Sunrise', _formatInTimezone(data.sunrise, timeFormatStr), false, true, isNext: nextName == 'Sunrise'),
-                        _buildPrayerCard('Dhuhr', _formatInTimezone(data.dhuhr, timeFormatStr), true, false, isNext: nextName == 'Dhuhr'),
-                        _buildPrayerCard('Asr', _formatInTimezone(data.asr, timeFormatStr), true, false, isNext: nextName == 'Asr'),
-                        _buildPrayerCard('Maghrib', _formatInTimezone(data.maghrib, timeFormatStr), false, true, isNext: nextName == 'Maghrib'),
-                        _buildPrayerCard('Isha', _formatInTimezone(data.isha, timeFormatStr), true, false, isNext: nextName == 'Isha'),
+                        _buildPrayerCard('Fajr', _formatInTimezone(data.fajr, timeFormatStr), isNext: nextName == 'Fajr'),
+                        _buildPrayerCard('Sunrise', _formatInTimezone(data.sunrise, timeFormatStr), isNext: nextName == 'Sunrise'),
+                        _buildPrayerCard('Dhuhr', _formatInTimezone(data.dhuhr, timeFormatStr), isNext: nextName == 'Dhuhr'),
+                        _buildPrayerCard('Asr', _formatInTimezone(data.asr, timeFormatStr), isNext: nextName == 'Asr'),
+                        _buildPrayerCard('Maghrib', _formatInTimezone(data.maghrib, timeFormatStr), isNext: nextName == 'Maghrib'),
+                        _buildPrayerCard('Isha', _formatInTimezone(data.isha, timeFormatStr), isNext: nextName == 'Isha'),
                       ],
                     ),
 
@@ -442,13 +470,18 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-  Widget _buildPrayerCard(String name, String time, bool isSoundOn, bool isMuted, {bool isNext = false}) {
-     return Container(
+  Widget _buildPrayerCard(String name, String time, {bool isNext = false}) {
+    // Get notification setting for this prayer
+    final settings = _settingsService.getSettings();
+    final notifType = settings.prayerNotificationSettings[name] ?? NotificationType.adhan;
+    final isMuted = notifType == NotificationType.silent;
+    
+    return Container(
       decoration: BoxDecoration(
-        color: isNext ? Colors.white : const Color(0xFFF5F5F5), // Light grey or white for next
+        color: isNext ? Colors.white : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isNext ? Colors.green.withOpacity(0.5) : Colors.blue.withOpacity(0.3), // Thin blue (or green for next)
+          color: isNext ? Colors.green.withOpacity(0.5) : Colors.blue.withOpacity(0.3),
           width: 1,
         ),
         boxShadow: isNext ? [
@@ -463,10 +496,18 @@ class _HomePageState extends State<HomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Icon(
-                isMuted ? Icons.notifications_off_outlined : Icons.notifications_active_rounded,
-                size: 18,
-                color: isNext ? Colors.green : Colors.grey[600],
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationSettingsPage()),
+                  ).then((_) => _refreshData());
+                },
+                child: Icon(
+                  isMuted ? Icons.notifications_off_outlined : Icons.notifications_active_rounded,
+                  size: 18,
+                  color: isMuted ? Colors.grey[400] : (isNext ? Colors.green : Colors.grey[600]),
+                ),
               )
             ],
           ),

@@ -154,13 +154,22 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+  
+  // GlobalKey to access HomePage state for permission refresh
+  final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const QiblaPage(),
-    const ZhikrPage(),
-    const SettingsPage(),
-  ];
+  late final List<Widget> _pages;
+  
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(key: _homePageKey),
+      const QiblaPage(),
+      const ZhikrPage(),
+      const SettingsPage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -170,9 +179,14 @@ class _MainScaffoldState extends State<MainScaffold> {
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentIndex,
         onTap: (index) {
+          final wasOnSettings = _currentIndex == 3; // Settings is index 3
           setState(() {
             _currentIndex = index;
           });
+          // If switching TO home tab (especially from settings), refresh permission
+          if (index == 0) {
+            _homePageKey.currentState?.checkSystemPermission();
+          }
         },
       ),
     );

@@ -278,12 +278,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   // ==================== STEP 2: NOTIFICATIONS ====================
   Widget _buildNotificationsStep() {
+    final prayers = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.notifications_active, size: 60, color: Colors.white.withOpacity(0.9)),
+          Icon(Icons.notifications_active, size: 60, color: Colors.white.withValues(alpha: 0.9)),
           const SizedBox(height: 16),
           Text(
             'Notification Sounds',
@@ -292,16 +294,58 @@ class _OnboardingPageState extends State<OnboardingPage> {
           const SizedBox(height: 8),
           Text(
             'Choose how you want to be notified for each prayer.',
-            style: GoogleFonts.outfit(fontSize: 14, color: Colors.white.withOpacity(0.8)),
+            style: GoogleFonts.outfit(fontSize: 14, color: Colors.white.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 24),
           
-          // Prayer rows
+          // Table layout
           Expanded(
-            child: ListView(
-              children: _prayerSettings.keys.map((prayer) => _buildPrayerRow(prayer)).toList(),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  // Header row
+                  Row(
+                    children: [
+                      const SizedBox(width: 80), // Prayer name column
+                      Expanded(
+                        child: Center(
+                          child: Text('Silent', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text('Beep', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text('Adhan', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Divider(color: Colors.white.withValues(alpha: 0.3)),
+                  const SizedBox(height: 8),
+                  
+                  // Prayer rows
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: prayers.length,
+                      itemBuilder: (context, index) => _buildTableRow(prayers[index]),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+          
+          const SizedBox(height: 16),
           
           // Finish Button
           SizedBox(
@@ -323,45 +367,51 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  Widget _buildPrayerRow(String prayer) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildTableRow(String prayer) {
+    // Ensure prayer exists in settings, default to adhan
+    if (!_prayerSettings.containsKey(prayer)) {
+      _prayerSettings[prayer] = NotificationType.adhan;
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Expanded(
+          SizedBox(
+            width: 80,
             child: Text(
               prayer,
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
             ),
           ),
-          SegmentedButton<NotificationType>(
-            segments: const [
-              ButtonSegment(value: NotificationType.silent, label: Text('Silent')),
-              ButtonSegment(value: NotificationType.beep, label: Text('Beep')),
-              ButtonSegment(value: NotificationType.adhan, label: Text('Adhan')),
-            ],
-            selected: {_prayerSettings[prayer]!},
-            onSelectionChanged: (Set<NotificationType> newSelection) {
-              setState(() => _prayerSettings[prayer] = newSelection.first);
-            },
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
-                }
-                return Colors.white.withOpacity(0.3);
-              }),
-              foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFF5B7FFF);
-                }
-                return Colors.white;
-              }),
+          Expanded(
+            child: Center(
+              child: Radio<NotificationType>(
+                value: NotificationType.silent,
+                groupValue: _prayerSettings[prayer],
+                onChanged: (value) => setState(() => _prayerSettings[prayer] = value!),
+                fillColor: WidgetStateProperty.all(Colors.white),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Radio<NotificationType>(
+                value: NotificationType.beep,
+                groupValue: _prayerSettings[prayer],
+                onChanged: (value) => setState(() => _prayerSettings[prayer] = value!),
+                fillColor: WidgetStateProperty.all(Colors.white),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Radio<NotificationType>(
+                value: NotificationType.adhan,
+                groupValue: _prayerSettings[prayer],
+                onChanged: (value) => setState(() => _prayerSettings[prayer] = value!),
+                fillColor: WidgetStateProperty.all(Colors.white),
+              ),
             ),
           ),
         ],
