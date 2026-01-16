@@ -15,8 +15,8 @@ class NotificationService {
 
   Future<void> init() async {
     await AwesomeNotifications().initialize(
-      // set the icon to null if you want to use the default app icon
-      null,
+      // set the icon to 'resource://mipmap/launcher_icon' or 'resource://drawable/res_app_icon'
+      'resource://mipmap/launcher_icon',
       [
         // Channel for Adhan sound (Full audio file)
         NotificationChannel(
@@ -56,6 +56,17 @@ class NotificationService {
           playSound: false,
           criticalAlerts: false,
         ),
+        
+        // --- DYNAMIC ADHAN CHANNELS ---
+        // Android channels are immutable, so we need one for each file.
+        // Base keys: channel_adhan_mishary, channel_adhan_abdulbasit, etc.
+        
+        _createAdhanChannel('mishary', 'Adhan Mishary'),
+        _createAdhanChannel('abdulbasit', 'Adhan Abdulbasit'),
+        _createAdhanChannel('ahmed_kourdi', 'Adhan Ahmed Kourdi'),
+        _createAdhanChannel('assem_bukhari', 'Adhan Assem Bukhari'),
+        _createAdhanChannel('algeria', 'Adhan Algeria'),
+        
       ],
       channelGroups: [
         NotificationChannelGroup(
@@ -64,6 +75,22 @@ class NotificationService {
         )
       ],
       debug: true,
+    );
+  }
+
+  // Helper to create channel config to avoid repetition
+  NotificationChannel _createAdhanChannel(String idSuffix, String name) {
+    return NotificationChannel(
+      channelGroupKey: 'adhan_channel_group',
+      channelKey: 'channel_adhan_$idSuffix', // e.g. channel_adhan_mishary
+      channelName: name,
+      channelDescription: 'Prayer notifications with $name audio',
+      defaultColor: const Color(0xFF5B7FFF),
+      ledColor: Colors.white,
+      importance: NotificationImportance.Max,
+      playSound: true,
+      soundSource: 'resource://raw/adhan_$idSuffix', // matches filename in res/raw
+      criticalAlerts: true,
     );
   }
 
@@ -144,7 +171,20 @@ class NotificationService {
       case NotificationType.beep:
         return 'channel_beep';
       case NotificationType.adhan:
-        return 'channel_adhan';
+        // Use the selected adhan sound from settings
+        final settings = SettingsService().getSettings();
+        // The setting stores 'adhan_mishary'. We need to convert it to channel key 'channel_adhan_mishary'
+        // Actually, our channel keys are 'channel_adhan_mishary'. 
+        // If settings.adhanSound is 'adhan_mishary', and we strip 'adhan_', we get 'mishary'.
+        // Wait, why strip? Let's just use the setting directly if possible.
+        // My channel logic above: 'channel_adhan_$idSuffix'.
+        // My settings logic: 'adhan_mishary', 'adhan_algeria' (these are filenames sans extension).
+        // Let's normalize. 
+        // Setting: 'adhan_mishary'
+        // Corresponding Channel Key: 'channel_adhan_mishary'
+        // Audio File: 'adhan_mishary.mp3'
+        
+        return 'channel_${settings.adhanSound}'; // e.g. channel_adhan_mishary
     }
   }
 
@@ -170,5 +210,26 @@ class NotificationService {
       ),
       schedule: NotificationCalendar.fromDate(date: scheduledTime, preciseAlarm: true, allowWhileIdle: true),
     );
+  }
+  Future<void> scheduleTestAlarm({required int seconds}) async {
+    debugPrint('=== SCHEDULING TEST ALARM IN $seconds SECONDS ===');
+    
+    final scheduledTime = DateTime.now().add(Duration(seconds: seconds));
+    
+    
+    // Determine channel based on current setting
+    final settings = SettingsService().getSettings();
+    final channelKey = 'channel_${settings.adhanSound}';
+
+    // Use ID 999 to avoid conflict with prayers (101-105)
+    await _scheduleNotification(
+      id: 999,
+      title: 'Test Adhan Alarm',
+      body: 'This is a test alarm to verify wake-up logic.',
+      scheduledTime: scheduledTime,
+      channelKey: channelKey,
+    );
+    
+    debugPrint('=== TEST ALARM SCHEDULED FOR $scheduledTime ===');
   }
 }

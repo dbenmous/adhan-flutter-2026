@@ -11,9 +11,11 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/settings_service.dart';
 import '../../../core/models/settings_model.dart';
 import 'monthly_calendar_page.dart';
+import 'weather_widgets.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:awesome_notifications/awesome_notifications.dart';
 import '../../settings/ui/notification_settings_page.dart';
+import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,11 +37,14 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String _locationName = 'Loading...';
   String _hijriDateString = '';
   bool _isSystemMuted = false;
+  bool _isBatteryOptimized = false; // "true" means BAD (restricted)
+  bool _showBatteryBanner = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkBatteryStatus();
     _refreshData();
     _startTimer();
     checkSystemPermission();
@@ -57,6 +62,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Re-check permission when user returns from settings
       checkSystemPermission();
+      _checkBatteryStatus(); // Re-check battery optimization
     }
   }
 
@@ -65,6 +71,17 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
     AwesomeNotifications().isNotificationAllowed().then((isAllowed) {
       if (mounted) setState(() => _isSystemMuted = !isAllowed);
     });
+  }
+
+  Future<void> _checkBatteryStatus() async {
+    final isDisabled = await DisableBatteryOptimization.isBatteryOptimizationDisabled;
+    if (mounted) {
+      setState(() {
+        // if isDisabled is true, then optimization is OFF (Good)
+        // if isDisabled is false, then optimization is ON (Bad)
+        _isBatteryOptimized = !(isDisabled ?? false);
+      });
+    }
   }
 
   void _refreshData() {
@@ -222,55 +239,74 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     // 2. Main Header
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row( // Changed to Row for side-by-side layout
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            'Next Prayer in ${_formatDuration(_currentCountdown)}',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          RichText(
-                            text: TextSpan(
+                          // Left Side: Text Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                TextSpan(
-                                  text: '$nextName ',
+                                Text(
+                                  'Next Prayer in ${_formatDuration(_currentCountdown)}',
                                   style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
                                   ),
                                 ),
-                                TextSpan(
-                                  text: nextTime != null ? _formatInTimezone(nextTime, timeFormatStr) : '--:--',
+                                const SizedBox(height: 4),
+                                RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: '$nextName ',
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontSize: 42,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  nextTime != null ? _formatInTimezone(nextTime, timeFormatStr) : '--:--',
                                   style: GoogleFonts.outfit(
                                     color: Colors.white.withOpacity(0.8),
                                     fontSize: 42,
+                                    height: 0.8, // Tighter height for alignment
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _hijriDateString,
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w300,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
-                            style: GoogleFonts.outfit(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _hijriDateString,
-                            style: GoogleFonts.outfit(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w300,
+                          
+                          // Right Side: Native Weather Animation
+                          SizedBox(
+                            width: 120, 
+                            height: 120,
+                            child: Center(
+                              child: _buildWeatherWidget(data),
                             ),
                           ),
                         ],
@@ -339,7 +375,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ],
                     ),
 
-                    // 6. Calendar Banner
+                    // 6. Battery Warning Widget (New Position)
+                    _buildBatteryWarning(),
+
+                    // 7. Calendar Banner
                    GestureDetector(
                      onTap: () {
                        Navigator.push(
@@ -353,7 +392,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
                           ],
@@ -389,10 +428,73 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
           );
         }
       ),
+      // bottomNavigationBar: _buildBatteryBanner(), // Removed
     );
-    }
+  }
   
-    String _getPrayerName(Prayer p) {
+  Widget _buildBatteryWarning() {
+    if (!_isBatteryOptimized || !_showBatteryBanner) return const SizedBox.shrink();
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.5), // White transparent 50%
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+               onTap: () {
+                 DisableBatteryOptimization.showDisableBatteryOptimizationSettings();
+               },
+               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Adhan is not authorized",
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold, 
+                      color: Colors.redAccent.shade200, // Light red
+                      fontSize: 16
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Tap to fix",
+                    style: GoogleFonts.outfit(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Arrow Button
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.black54),
+             onPressed: () {
+                DisableBatteryOptimization.showDisableBatteryOptimizationSettings();
+             },
+             padding: EdgeInsets.zero,
+             constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 16),
+          
+          // X Icon (Red)
+          IconButton(
+            icon: const Icon(Icons.close, size: 20, color: Colors.redAccent),
+            onPressed: () => setState(() => _showBatteryBanner = false),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          )
+        ],
+      ),
+    );
+  }
+
+  String _getPrayerName(Prayer p) {
       if (p == Prayer.none) return "Fajr"; // Wrapped
       return p.name[0].toUpperCase() + p.name.substring(1);
     }
@@ -517,5 +619,41 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  Widget _buildWeatherWidget(PrayerTimes data) {
+    // return const AnimatedAdhan(); // FORCED PREVIEW REMOVED
+    final now = DateTime.now();
+
+    // 0. Check for Adhan (Prayer Time) - 15 Minute Window
+    // Check if we represent a "Call to Prayer" time
+    final prayers = [
+      data.fajr,
+      // data.sunrise, // Sunrise is not a prayer time (Adhan)
+      data.dhuhr,
+      data.asr,
+      data.maghrib,
+      data.isha,
+    ];
+
+    for (var prayerTime in prayers) {
+      // Show Adhan widget if within 5 minutes AFTER the prayer time
+      if (now.isAfter(prayerTime) && now.isBefore(prayerTime.add(const Duration(minutes: 5)))) {
+         return const AnimatedAdhan();
+      }
+    }
+
+    // 1. Night: Before Sunrise OR After Maghrib
+    if (now.isBefore(data.sunrise) || now.isAfter(data.maghrib)) {
+      return const AnimatedMoon();
+    }
+    
+    // 2. Sunset: Between Asr and Maghrib (Late Afternoon)
+    if (now.isAfter(data.asr) && now.isBefore(data.maghrib)) {
+        return const AnimatedSunset();
+    }
+
+    // 3. Day: Otherwise (Sunrise to Asr)
+    return const AnimatedSun();
   }
 }

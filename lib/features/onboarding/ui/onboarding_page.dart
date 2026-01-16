@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/settings_service.dart';
@@ -27,6 +28,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // Per-prayer notification settings
   Map<String, NotificationType> _prayerSettings = {
     'Fajr': NotificationType.adhan,
+    'Sunrise': NotificationType.silent,
     'Dhuhr': NotificationType.adhan,
     'Asr': NotificationType.adhan,
     'Maghrib': NotificationType.adhan,
@@ -56,6 +58,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     _buildProgressDot(0),
                     const SizedBox(width: 8),
                     _buildProgressDot(1),
+                    const SizedBox(width: 8),
+                    _buildProgressDot(2),
                   ],
                 ),
               ),
@@ -68,6 +72,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   onPageChanged: (index) => setState(() => _currentPage = index),
                   children: [
                     _buildLocationStep(),
+                    _buildBatteryStep(),
                     _buildNotificationsStep(),
                   ],
                 ),
@@ -276,7 +281,87 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
-  // ==================== STEP 2: NOTIFICATIONS ====================
+  // ==================== STEP 2: BATTERY OPTIMIZATION (NEW) ====================
+  Widget _buildBatteryStep() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Spacer(),
+          Icon(Icons.battery_alert_rounded, size: 80, color: Colors.amberAccent),
+          const SizedBox(height: 24),
+          Text(
+            'Keep App Alive',
+            style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'To ensure the Adhan rings when your phone is asleep, Android needs special permission to ignore battery limits for this app.',
+            style: GoogleFonts.outfit(fontSize: 16, color: Colors.white.withOpacity(0.9)),
+          ),
+          const SizedBox(height: 32),
+          
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amberAccent.withOpacity(0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.amberAccent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Without this, alarms may be delayed or silent in Doze mode.',
+                    style: GoogleFonts.outfit(fontSize: 14, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Spacer(),
+          
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                 await Permission.ignoreBatteryOptimizations.request();
+                 // After request (whether allowed or not), move next
+                 _goToNextPage();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: Text('Enable Unrestricted Battery', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+           // Skip button
+          Center(
+            child: TextButton(
+              onPressed: _goToNextPage,
+              child: Text(
+                'Skip (Risk of missed alarms)',
+                style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ==================== STEP 3: NOTIFICATIONS ====================
   Widget _buildNotificationsStep() {
     final prayers = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     

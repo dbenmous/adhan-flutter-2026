@@ -111,6 +111,11 @@ class SettingsService {
     await saveSettings(current.copyWith(areNotificationsEnabled: enabled));
   }
   
+  Future<void> setAdhanSound(String soundFilename) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(adhanSound: soundFilename));
+  }
+  
   Future<void> setCalculationMethodOptions({required String methodKey, required bool auto}) async {
     final current = getSettings();
     String newMethodKey = methodKey;

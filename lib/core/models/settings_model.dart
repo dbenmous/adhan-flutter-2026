@@ -23,6 +23,7 @@ class SettingsModel {
   final bool areNotificationsEnabled;
   final String dstMode; // 'auto', 'manual'
   final int dstOffset; // minutes
+  final String adhanSound; // name of file in res/raw (without extension)
   
   /// Per-prayer notification sound settings
   final Map<String, NotificationType> prayerNotificationSettings;
@@ -38,6 +39,7 @@ class SettingsModel {
     this.autoMadhab = true, // NEW
     this.dstMode = 'auto',
     this.dstOffset = 0,
+    this.adhanSound = 'adhan_mishary',
     this.latitude,
     this.longitude,
     this.lastUpdated,
@@ -70,6 +72,7 @@ class SettingsModel {
       areNotificationsEnabled: json['areNotificationsEnabled'] ?? true, // NEW
       dstMode: json['dstMode'] ?? 'auto',
       dstOffset: json['dstOffset'] ?? 0,
+      adhanSound: json['adhanSound'] ?? 'adhan_mishary',
       latitude: json['latitude'],
       longitude: json['longitude'],
       lastUpdated: json['lastUpdated'] != null
@@ -106,6 +109,7 @@ class SettingsModel {
       'areNotificationsEnabled': areNotificationsEnabled, // NEW
       'dstMode': dstMode,
       'dstOffset': dstOffset,
+      'adhanSound': adhanSound,
       'latitude': latitude,
       'longitude': longitude,
       'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
@@ -129,6 +133,7 @@ class SettingsModel {
     bool? areNotificationsEnabled, // NEW
     String? dstMode,
     int? dstOffset,
+    String? adhanSound,
     double? latitude,
     double? longitude,
     DateTime? lastUpdated,
@@ -150,6 +155,7 @@ class SettingsModel {
       areNotificationsEnabled: areNotificationsEnabled ?? this.areNotificationsEnabled, // NEW
       dstMode: dstMode ?? this.dstMode,
       dstOffset: dstOffset ?? this.dstOffset,
+      adhanSound: adhanSound ?? this.adhanSound,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       lastUpdated: lastUpdated ?? this.lastUpdated,

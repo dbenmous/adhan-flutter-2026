@@ -15,7 +15,9 @@ import 'manual_corrections_page.dart';
 import 'location_page.dart';
 import 'juristic_method_page.dart';
 import 'notification_settings_page.dart';
+import 'sound_selection_page.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -36,6 +38,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String _madhab = 'Shafi';
   String _highLatitude = 'Middle of Night';
   String _dstMode = 'Auto';
+  String _adhanSoundName = 'Default';
+  bool? _isBatteryOptimized; // null=loading, true=unrestricted(good), false=restricted(bad)
 
   @override
   void initState() {
@@ -52,6 +56,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = SettingsService().getSettings();
+    
+    // Check battery optimization status
+    _isBatteryOptimized = await DisableBatteryOptimization.isBatteryOptimizationDisabled;
+    
     String locName = 'Unknown';
     if (settings.latitude != null && settings.longitude != null) {
        locName = await LocationService().getLocationName(
@@ -66,7 +74,10 @@ class _SettingsPageState extends State<SettingsPage> {
       _madhab = settings.autoMadhab ? 'Auto ($madhabName)' : madhabName;
       _highLatitude = settings.highLatitudeRule.replaceAll('_', ' ').toUpperCase(); // basic formatting
       _dstMode = settings.dstMode.toUpperCase();
+      _dstMode = settings.dstMode.toUpperCase();
       _notificationsEnabled = settings.areNotificationsEnabled;
+      // Basic formatting for display
+      _adhanSoundName = settings.adhanSound.replaceAll('adhan_', '').replaceAll('_', ' ').toUpperCase();
     });
   }
 
@@ -321,6 +332,19 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _buildGroupTile(
                   isDark,
+                   icon: Icons.music_note_rounded,
+                  iconColor: Colors.deepOrange,
+                  title: 'Adhan Sound',
+                  value: _adhanSoundName,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SoundSelectionPage()),
+                    ).then((_) => _loadSettings());
+                  }, 
+                ),
+                 _buildGroupTile(
+                  isDark,
                   icon: Icons.app_settings_alt_rounded,
                   iconColor: Colors.purple,
                   title: 'App Icon',
@@ -354,6 +378,71 @@ class _SettingsPageState extends State<SettingsPage> {
                   showDivider: false
                 ),
               ]),
+
+              const SizedBox(height: 24),
+
+              // Debug / Tests Section
+              _buildSectionHeader('Debug / Tests'),
+              const SizedBox(height: 8),
+              _buildSettingsGroup(isDark, [
+                 _buildGroupTile(
+                  isDark,
+                  icon: Icons.battery_alert_rounded,
+                  iconColor: (_isBatteryOptimized == true) ? Colors.green : Colors.red,
+                  title: 'Battery Optimization',
+                  value: (_isBatteryOptimized == true) 
+                      ? 'Unrestricted (Good)' 
+                      : 'Restricted (Tap to Fix)',
+                  valueColor: (_isBatteryOptimized == true) ? Colors.green : Colors.red,
+                  onTap: () async {
+                    if (_isBatteryOptimized == true) {
+                       if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Battery is already unrestricted. Great!')),
+                        );
+                      }
+                    } else {
+                      await DisableBatteryOptimization.showDisableBatteryOptimizationSettings();
+                      // Refresh after coming back
+                      await Future.delayed(const Duration(seconds: 1)); // small delay
+                      _loadSettings();
+                    }
+                  },
+                ),
+                 _buildGroupTile(
+                  isDark,
+                  icon: Icons.timer_outlined,
+                  iconColor: Colors.orange,
+                  title: 'Test Alarm (10s)',
+                  value: 'Tap then LOCK screen',
+                  valueColor: Colors.orange,
+                  onTap: () async {
+                    await NotificationService().scheduleTestAlarm(seconds: 10);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Alarm set for 10s! Lock your screen NOW.')),
+                      );
+                    }
+                  },
+                ),
+                 _buildGroupTile(
+                  isDark,
+                  icon: Icons.timer_10_outlined, // Using similar icon
+                  iconColor: Colors.redAccent,
+                  title: 'Test Alarm (4min)',
+                  value: 'Wait for it...',
+                  onTap: () async {
+                    await NotificationService().scheduleTestAlarm(seconds: 240);
+                     if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Alarm set for 4 minutes.')),
+                      );
+                    }
+                  },
+                  showDivider: false
+                ),
+              ]),
+
               const SizedBox(height: 100),
             ],
           ),
