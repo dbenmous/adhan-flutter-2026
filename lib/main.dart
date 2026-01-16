@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter/foundation.dart'; // for kDebugMode
 
 import 'features/home/ui/home_page.dart';
 import 'features/qibla/ui/qibla_page.dart';
@@ -17,8 +19,84 @@ import 'core/services/location_service.dart';
 import 'core/services/prayer_time_service.dart';
 import 'core/models/settings_model.dart';
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    debugPrint("Native called background task: $task");
+    
+    // Services Initialization for Background Isolate
+    WidgetsFlutterBinding.ensureInitialized();
+    tz.initializeTimeZones();
+    await SettingsService().init();
+    await NotificationService().init();
+    
+    try {
+      final locationService = LocationService();
+      final prayerService = PrayerTimeService();
+      final settingsService = SettingsService();
+      final notificationService = NotificationService();
+      
+      // We need to init location service too but it might fail in background if permission missing
+      // However, we cached coordinates in Settings usually? 
+      // LocationService usually needs to fetch fresh location.
+      // If we are in background, better use CACHED location or SettingsService default.
+      // But LocationService.getCurrentLocation() handles permission checks.
+      
+      // NOTE: Location updates in background might be tricky. 
+      // Safe bet: Use last known location from SharedPreferences if available, or just call getCurrentLocation()
+      // which returns cached if fresh enough.
+      
+      final coords = await locationService.getCurrentLocation();
+      final settings = settingsService.getSettings();
+      
+      // Schedule 30 Days from NOW
+      // We do NOT cancel all. We just overwrite/append for the next 30 days.
+      // The IDs overlap (101-150 range usually? No, we use offset).
+      // Wait, schedulePrayerTimes uses idOffset.
+      // logic in main (lines 92-101) uses offset i*10.
+      
+      final now = DateTime.now();
+      for (int i = 0; i < 30; i++) {
+        final date = now.add(Duration(days: i));
+        // Recalculate for that day
+        final times = await prayerService.calculatePrayerTimes(
+          coords,
+          settings,
+          date: date,
+        );
+        // Schedule (upsert)
+        await notificationService.schedulePrayerTimes(times, idOffset: i * 10);
+      }
+      
+      debugPrint("[Background] Successfully refreshed 30 days of prayers.");
+      
+    } catch (e) {
+      debugPrint("[Background] Error refreshing prayers: $e");
+      return Future.value(false);
+    }
+
+    return Future.value(true);
+  });
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Init Workmanager
+  Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: kDebugMode, // logs to console
+  );
+  
+  // Register Periodic Task (Once a day)
+  Workmanager().registerPeriodicTask(
+    "daily_prayer_refresh", 
+    "simplePeriodicTask", 
+    frequency: const Duration(hours: 24),
+    constraints: Constraints(
+      networkType: NetworkType.connected, // Only if internet available (optional)
+    ),
+  );
   
   // Init Services
   tz.initializeTimeZones();
@@ -47,14 +125,13 @@ class AdhanApp extends StatefulWidget {
   State<AdhanApp> createState() => _AdhanAppState();
 }
 
-class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
+class _AdhanAppState extends State<AdhanApp> {
   
   StreamSubscription<SettingsModel>? _settingsSubscription;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _initialSetup();
     
     // Listen for settings changes to reschedule notifications immediately
@@ -88,7 +165,6 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
     final settings = settingsService.getSettings();
 
     // Schedule 30 Days of Notifications for reliability
-    await notificationService.cancelAllPrayerNotifications();
     
     final now = DateTime.now();
     for (int i = 0; i < 30; i++) {
@@ -105,22 +181,10 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
     debugPrint("Scheduled 30 days of notifications for $coords");
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-       _checkUpdatesOnResume();
-    }
-  }
 
-  Future<void> _checkUpdatesOnResume() async {
-     // Ideally check for date/timezone change or significant location change
-     // simplified: just refresh 
-     await _refreshPrayerTimes();
-  }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _settingsSubscription?.cancel();
     super.dispose();
   }
