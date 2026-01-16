@@ -1,4 +1,7 @@
-import 'dart:convert';
+// Settings Model for Adhan App
+
+/// Notification sound type for each prayer
+enum NotificationType { silent, beep, adhan }
 
 class SettingsModel {
   final String calculationMethodKey;
@@ -17,9 +20,12 @@ class SettingsModel {
 
   final bool autoCalculationMethod;
   final bool autoMadhab;
-  final bool areNotificationsEnabled; // NEW
+  final bool areNotificationsEnabled;
   final String dstMode; // 'auto', 'manual'
   final int dstOffset; // minutes
+  
+  /// Per-prayer notification sound settings
+  final Map<String, NotificationType> prayerNotificationSettings;
 
   SettingsModel({
     this.calculationMethodKey = 'muslim_world_league',
@@ -38,8 +44,15 @@ class SettingsModel {
     this.isManualLocation = false,
     this.manualLocationName,
     this.countryCode, 
-    this.areNotificationsEnabled = true, // NEW
+    this.areNotificationsEnabled = true,
     this.timezoneId = 'UTC',
+    this.prayerNotificationSettings = const {
+      'Fajr': NotificationType.adhan,
+      'Dhuhr': NotificationType.adhan,
+      'Asr': NotificationType.adhan,
+      'Maghrib': NotificationType.adhan,
+      'Isha': NotificationType.adhan,
+    },
   });
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
@@ -66,6 +79,17 @@ class SettingsModel {
       manualLocationName: json['manualLocationName'],
       countryCode: json['countryCode'],
       timezoneId: json['timezoneId'] ?? 'UTC',
+      prayerNotificationSettings: (json['prayerNotificationSettings'] as Map<String, dynamic>?)
+          ?.map((k, v) => MapEntry(k, NotificationType.values.firstWhere(
+              (e) => e.name == v,
+              orElse: () => NotificationType.adhan))) ??
+          const {
+            'Fajr': NotificationType.adhan,
+            'Dhuhr': NotificationType.adhan,
+            'Asr': NotificationType.adhan,
+            'Maghrib': NotificationType.adhan,
+            'Isha': NotificationType.adhan,
+          },
     );
   }
 
@@ -89,6 +113,7 @@ class SettingsModel {
       'manualLocationName': manualLocationName,
       'countryCode': countryCode,
       'timezoneId': timezoneId,
+      'prayerNotificationSettings': prayerNotificationSettings.map((k, v) => MapEntry(k, v.name)),
     };
   }
 
@@ -111,6 +136,7 @@ class SettingsModel {
     String? manualLocationName,
     String? countryCode,
     String? timezoneId,
+    Map<String, NotificationType>? prayerNotificationSettings,
   }) {
     return SettingsModel(
       calculationMethodKey: calculationMethodKey ?? this.calculationMethodKey,
@@ -131,6 +157,7 @@ class SettingsModel {
       manualLocationName: manualLocationName ?? this.manualLocationName,
       countryCode: countryCode ?? this.countryCode,
       timezoneId: timezoneId ?? this.timezoneId,
+      prayerNotificationSettings: prayerNotificationSettings ?? this.prayerNotificationSettings,
     );
   }
 }

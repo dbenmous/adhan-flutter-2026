@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:awesome_notifications/awesome_notifications.dart';
-import 'package:adhan/adhan.dart';
+import 'dart:async';
+
+import 'package:timezone/data/latest.dart' as tz;
+
 import 'features/home/ui/home_page.dart';
 import 'features/qibla/ui/qibla_page.dart';
 import 'features/zhikr/ui/zhikr_page.dart';
 import 'features/settings/ui/settings_page.dart';
+import 'features/onboarding/ui/onboarding_page.dart';
 import 'shared/widgets/custom_bottom_nav.dart';
 import 'core/services/settings_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/location_service.dart';
-import 'core/services/location_service.dart';
 import 'core/services/prayer_time_service.dart';
 import 'core/models/settings_model.dart';
-import 'dart:async';
-
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +26,22 @@ Future<void> main() async {
   await NotificationService().init();
   await LocationService().init();
 
-  runApp(const AdhanApp());
+  // Check if onboarding is complete
+  final prefs = await SharedPreferences.getInstance();
+  final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+  
+  // Determine initial screen
+  final Widget initialScreen = onboardingComplete 
+      ? const MainScaffold() 
+      : const OnboardingPage();
+
+  runApp(AdhanApp(initialScreen: initialScreen));
 }
 
 class AdhanApp extends StatefulWidget {
-  const AdhanApp({super.key});
+  final Widget initialScreen;
+  
+  const AdhanApp({super.key, required this.initialScreen});
 
   @override
   State<AdhanApp> createState() => _AdhanAppState();
@@ -56,13 +65,15 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
   }
 
   Future<void> _initialSetup() async {
-    // Request Permissions
-    await NotificationService().requestPermissions();
-    // Getting location will implicitly request permissions
-    await _refreshPrayerTimes();
+    // Request Permissions only if onboarding is already done
+    // (OnboardingPage handles its own permission requests)
+    final prefs = await SharedPreferences.getInstance();
+    final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
     
-    // Check Android 12+ Exact Alarms
-    // In a real app we'd redirect to settings if denied, simplified here
+    if (onboardingComplete) {
+      await NotificationService().requestPermissions();
+      await _refreshPrayerTimes();
+    }
   }
 
   Future<void> _refreshPrayerTimes() async {
@@ -125,7 +136,11 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),
         textTheme: GoogleFonts.outfitTextTheme(),
       ),
-      home: const MainScaffold(),
+      routes: {
+        '/home': (context) => const MainScaffold(),
+        '/onboarding': (context) => const OnboardingPage(),
+      },
+      home: widget.initialScreen,
     );
   }
 }
