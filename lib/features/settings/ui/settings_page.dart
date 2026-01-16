@@ -11,7 +11,9 @@ import '../../../core/services/prayer_time_service.dart';
 
 import 'calculation_methods_page.dart';
 import 'manual_corrections_page.dart';
+import 'manual_corrections_page.dart';
 import 'location_page.dart';
+import 'juristic_method_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -50,9 +52,11 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _calculationMethod = settings.autoCalculationMethod ? 'Auto' : settings.calculationMethodKey;
       _locationName = locName;
-      _madhab = settings.madhab == 'hanafi' ? 'Hanafi' : 'Shafi';
+      final madhabName = settings.madhab == 'hanafi' ? 'Hanafi' : 'Shafi';
+      _madhab = settings.autoMadhab ? 'Auto ($madhabName)' : madhabName;
       _highLatitude = settings.highLatitudeRule.replaceAll('_', ' ').toUpperCase(); // basic formatting
       _dstMode = settings.dstMode.toUpperCase();
+      _notificationsEnabled = settings.areNotificationsEnabled;
     });
   }
 
@@ -224,7 +228,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   iconColor: Colors.teal,
                   title: 'Juristic',
                   value: _madhab,
-                  onTap: _showJuristicDialog,
+                  onTap: () => Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (_) => const JuristicMethodPage())
+                  ),
                 ),
                 _buildGroupTile(
                   isDark,
@@ -291,8 +298,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       CustomSwitch(
                         value: _notificationsEnabled,
-                        onChanged: (val) {
+                        onChanged: (val) async {
                           setState(() => _notificationsEnabled = val);
+                          await SettingsService().setNotificationsEnabled(val);
                         },
                         activeColor: Theme.of(context).primaryColor,
                       ),

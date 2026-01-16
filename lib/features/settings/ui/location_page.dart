@@ -60,7 +60,9 @@ class _LocationPageState extends State<LocationPage> {
         ? "${placemarks.first.locality ?? ''}, ${placemarks.first.country ?? ''}"
         : "Selected Location";
     
-    await _settingsService.setManualLocation(location.latitude, location.longitude, name);
+    final timezoneId = _locationService.getTimezone(location.latitude, location.longitude);
+    final countryCode = await _locationService.getCountryCode(location.latitude, location.longitude);
+    await _settingsService.setManualLocation(location.latitude, location.longitude, name, timezoneId, countryCode);
     setState(() {
       _currentLocationName = name;
       _isManual = true;
@@ -77,11 +79,9 @@ class _LocationPageState extends State<LocationPage> {
     await _settingsService.clearManualLocation();
     
     // Force get fresh GPS location
-    final coords = await _locationService.getGpsLocation();
+    // getCurrentLocation updates settings automatically via onLocationChanged
+    final coords = await _locationService.getCurrentLocation();
     final name = await _locationService.getLocationName(coords);
-    
-    // Save the fresh auto location
-    await _settingsService.setLocation(coords.latitude, coords.longitude);
     
     setState(() {
       _currentLocationName = name;

@@ -5,32 +5,20 @@ import '../../../core/services/settings_service.dart';
 import '../../../core/models/settings_model.dart';
 import '../../../shared/widgets/custom_switch.dart';
 
-class CalculationMethodsPage extends StatefulWidget {
-  const CalculationMethodsPage({super.key});
+class JuristicMethodPage extends StatefulWidget {
+  const JuristicMethodPage({super.key});
 
   @override
-  State<CalculationMethodsPage> createState() => _CalculationMethodsPageState();
+  State<JuristicMethodPage> createState() => _JuristicMethodPageState();
 }
 
-class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
+class _JuristicMethodPageState extends State<JuristicMethodPage> {
   bool _isAuto = true;
-  String _selectedMethod = 'muslim_world_league';
+  String _selectedMadhab = 'shafi';
 
-  final List<String> _methods = [
-    'muslim_world_league',
-    'egyptian',
-    'karachi',
-    'umm_al_qura',
-    'dubai',
-    'moonsighting_committee',
-    'north_america',
-    'london_unified',
-    'kuwait',
-    'qatar',
-    'singapore',
-    'tehran',
-    'turkey',
-    'morocco',
+  final List<String> _madhabs = [
+    'shafi',
+    'hanafi',
   ];
 
   StreamSubscription<SettingsModel>? _subscription;
@@ -42,8 +30,8 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
     _subscription = SettingsService().settingsStream.listen((settings) {
       if (mounted) {
         setState(() {
-          _isAuto = settings.autoCalculationMethod;
-          _selectedMethod = settings.calculationMethodKey;
+          _isAuto = settings.autoMadhab;
+          _selectedMadhab = settings.madhab;
         });
       }
     });
@@ -58,20 +46,17 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
   Future<void> _loadSettings() async {
     final settings = SettingsService().getSettings();
     setState(() {
-      _isAuto = settings.autoCalculationMethod;
-      _selectedMethod = settings.calculationMethodKey;
+      _isAuto = settings.autoMadhab;
+      _selectedMadhab = settings.madhab;
     });
   }
 
-  Future<void> _saveSettings(String method, bool auto) async {
-    await SettingsService().setCalculationMethodOptions(methodKey: method, auto: auto);
+  Future<void> _saveSettings(String madhab, bool auto) async {
+    await SettingsService().setMadhabOptions(madhab: madhab, auto: auto);
     setState(() {
-      _selectedMethod = method;
+      _selectedMadhab = madhab;
       _isAuto = auto;
     });
-    
-    // Trigger update in previous screen if needed or just rely on service stream/rebuild
-    // For now, simpler is fine.
   }
 
   @override
@@ -81,7 +66,7 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Calculation Methods',
+          'Juristic Method',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -122,7 +107,7 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
                 CustomSwitch(
                   value: _isAuto,
                   onChanged: (val) {
-                    _saveSettings(_selectedMethod, val);
+                    _saveSettings(_selectedMadhab, val);
                   },
                   activeColor: Theme.of(context).primaryColor,
                 ),
@@ -139,18 +124,20 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 child: Column(
-                  children: List.generate(_methods.length, (index) {
-                    final method = _methods[index];
-                    final isSelected = method == _selectedMethod;
-                    final isDisabled = _isAuto;
-                    final isLast = index == _methods.length - 1;
+                  children: List.generate(_madhabs.length, (index) {
+                    final madhab = _madhabs[index];
+                    final isSelected = madhab == _selectedMadhab;
+                    // final isDisabled = _isAuto; // Removed to allow implicit switch
+                    final isLast = index == _madhabs.length - 1;
+                    
+                    String displayName = madhab == 'shafi' 
+                        ? 'Standard (Shafi, Maliki, Hanbali)' 
+                        : 'Hanafi';
 
                     return Column(
                       children: [
                         InkWell(
-                           onTap: isDisabled 
-                              ? null 
-                              : () => _saveSettings(method, false),
+                           onTap: () => _saveSettings(madhab, false), // Always set auto to false on tap
                            borderRadius: BorderRadius.only(
                              topLeft: index == 0 ? const Radius.circular(30) : Radius.zero,
                              topRight: index == 0 ? const Radius.circular(30) : Radius.zero,
@@ -163,36 +150,20 @@ class _CalculationMethodsPageState extends State<CalculationMethodsPage> {
                                children: [
                                  Expanded(
                                    child: Text(
-                                     method.replaceAll('_', ' ').toUpperCase(),
+                                     displayName,
                                      style: GoogleFonts.outfit(
                                        fontSize: 16,
                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                       color: isDisabled ? Colors.grey : (isSelected ? Theme.of(context).primaryColor : null),
+                                       color: isSelected ? Theme.of(context).primaryColor : null, // Always color selected
                                      ),
                                    ),
                                  ),
-                                 if (isSelected && !isDisabled)
+                                 if (isSelected) // Always show check if selected, even in Auto (simpler UI)
                                    Icon(
                                      Icons.check_circle_rounded,
                                      color: Theme.of(context).primaryColor,
                                      size: 20,
                                    ),
-                                 if (isSelected && isDisabled)
-                                    Container(
-                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                       decoration: BoxDecoration(
-                                         color: Colors.grey[300],
-                                         borderRadius: BorderRadius.circular(8),
-                                       ),
-                                       child: Text(
-                                         'AUTO',
-                                         style: GoogleFonts.outfit(
-                                           fontSize: 10, 
-                                           fontWeight: FontWeight.bold,
-                                           color: Colors.black54
-                                         ),
-                                       ),
-                                     )
                                ],
                              ),
                            ),

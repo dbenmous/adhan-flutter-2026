@@ -12,8 +12,12 @@ class SettingsModel {
   final DateTime? lastUpdated;
   final bool isManualLocation;
   final String? manualLocationName;
+  final String? countryCode; // NEW: To re-evaluate auto settings
+  final String timezoneId; // 'UTC', 'America/New_York'
 
   final bool autoCalculationMethod;
+  final bool autoMadhab;
+  final bool areNotificationsEnabled; // NEW
   final String dstMode; // 'auto', 'manual'
   final int dstOffset; // minutes
 
@@ -25,6 +29,7 @@ class SettingsModel {
     this.hijriAdjustmentDays = 0,
     this.isDstEnabled = false,
     this.autoCalculationMethod = true,
+    this.autoMadhab = true, // NEW
     this.dstMode = 'auto',
     this.dstOffset = 0,
     this.latitude,
@@ -32,6 +37,9 @@ class SettingsModel {
     this.lastUpdated,
     this.isManualLocation = false,
     this.manualLocationName,
+    this.countryCode, 
+    this.areNotificationsEnabled = true, // NEW
+    this.timezoneId = 'UTC',
   });
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +53,8 @@ class SettingsModel {
       hijriAdjustmentDays: json['hijriAdjustmentDays'] ?? 0,
       isDstEnabled: json['isDstEnabled'] ?? false,
       autoCalculationMethod: json['autoCalculationMethod'] ?? true,
+      autoMadhab: json['autoMadhab'] ?? true,
+      areNotificationsEnabled: json['areNotificationsEnabled'] ?? true, // NEW
       dstMode: json['dstMode'] ?? 'auto',
       dstOffset: json['dstOffset'] ?? 0,
       latitude: json['latitude'],
@@ -54,6 +64,8 @@ class SettingsModel {
           : null,
       isManualLocation: json['isManualLocation'] ?? false,
       manualLocationName: json['manualLocationName'],
+      countryCode: json['countryCode'],
+      timezoneId: json['timezoneId'] ?? 'UTC',
     );
   }
 
@@ -66,6 +78,8 @@ class SettingsModel {
       'hijriAdjustmentDays': hijriAdjustmentDays,
       'isDstEnabled': isDstEnabled,
       'autoCalculationMethod': autoCalculationMethod,
+      'autoMadhab': autoMadhab,
+      'areNotificationsEnabled': areNotificationsEnabled, // NEW
       'dstMode': dstMode,
       'dstOffset': dstOffset,
       'latitude': latitude,
@@ -73,6 +87,8 @@ class SettingsModel {
       'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
       'isManualLocation': isManualLocation,
       'manualLocationName': manualLocationName,
+      'countryCode': countryCode,
+      'timezoneId': timezoneId,
     };
   }
 
@@ -84,6 +100,8 @@ class SettingsModel {
     int? hijriAdjustmentDays,
     bool? isDstEnabled,
     bool? autoCalculationMethod,
+    bool? autoMadhab,
+    bool? areNotificationsEnabled, // NEW
     String? dstMode,
     int? dstOffset,
     double? latitude,
@@ -91,6 +109,8 @@ class SettingsModel {
     DateTime? lastUpdated,
     bool? isManualLocation,
     String? manualLocationName,
+    String? countryCode,
+    String? timezoneId,
   }) {
     return SettingsModel(
       calculationMethodKey: calculationMethodKey ?? this.calculationMethodKey,
@@ -100,6 +120,8 @@ class SettingsModel {
       hijriAdjustmentDays: hijriAdjustmentDays ?? this.hijriAdjustmentDays,
       isDstEnabled: isDstEnabled ?? this.isDstEnabled,
       autoCalculationMethod: autoCalculationMethod ?? this.autoCalculationMethod,
+      autoMadhab: autoMadhab ?? this.autoMadhab,
+      areNotificationsEnabled: areNotificationsEnabled ?? this.areNotificationsEnabled, // NEW
       dstMode: dstMode ?? this.dstMode,
       dstOffset: dstOffset ?? this.dstOffset,
       latitude: latitude ?? this.latitude,
@@ -107,6 +129,8 @@ class SettingsModel {
       lastUpdated: lastUpdated ?? this.lastUpdated,
       isManualLocation: isManualLocation ?? this.isManualLocation,
       manualLocationName: manualLocationName ?? this.manualLocationName,
+      countryCode: countryCode ?? this.countryCode,
+      timezoneId: timezoneId ?? this.timezoneId,
     );
   }
 }

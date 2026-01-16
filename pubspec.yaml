@@ -47,6 +47,9 @@ dependencies:
   shared_preferences: ^2.5.3
   awesome_notifications: ^0.10.1
   hijri: ^3.0.0
+  timezone: ^0.10.1
+  lat_lng_to_timezone: ^0.2.0
+  disable_battery_optimization: ^1.1.2
 
 dev_dependencies:
   flutter_test:

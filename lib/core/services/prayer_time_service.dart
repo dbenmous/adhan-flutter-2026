@@ -2,6 +2,7 @@ import 'package:adhan/adhan.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/settings_model.dart';
+import 'custom_calculation_methods.dart';
 
 class PrayerTimeService {
   static final PrayerTimeService _instance = PrayerTimeService._internal();
@@ -17,7 +18,7 @@ class PrayerTimeService {
       Coordinates coordinates, SettingsModel settings, {DateTime? date}) async {
     
     final calculationDate = DateComponents.from(date ?? DateTime.now());
-    final params = _getCalculationParameters(settings);
+    final params = getCalculationParameters(settings);
 
     // 1. Madhab
     params.madhab = settings.madhab == 'hanafi' ? Madhab.hanafi : Madhab.shafi;
@@ -90,7 +91,15 @@ class PrayerTimeService {
     return prayerTimes;
   }
 
-  CalculationParameters _getCalculationParameters(SettingsModel settings) {
+  CalculationParameters getCalculationParameters(SettingsModel settings) {
+    if (settings.calculationMethodKey == 'morocco_custom') {
+       return CustomCalculationMethods.morocco;
+    }
+    
+    if (settings.calculationMethodKey == 'london_unified') {
+       return CustomCalculationMethods.londonUnified;
+    }
+
     switch (settings.calculationMethodKey.toLowerCase()) {
       case 'karachi':
         return CalculationMethod.karachi.getParameters();

@@ -1,8 +1,11 @@
-import 'package:geolocator/geolocator.dart';
 import 'package:adhan/adhan.dart';
 import 'settings_service.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'prayer_time_service.dart';
+import 'package:lat_lng_to_timezone/lat_lng_to_timezone.dart' as tzmap;
+import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -103,7 +106,16 @@ class LocationService {
         }
         
         // Update cache
-        await _settingsService.setLocation(position.latitude, position.longitude);
+        final countryCode = await getCountryCode(position.latitude, position.longitude);
+        final timezoneId = getTimezone(position.latitude, position.longitude);
+        
+        await _settingsService.onLocationChanged(
+          latitude: position.latitude, 
+          longitude: position.longitude, 
+          newCountryCode: countryCode, 
+          timezoneId: timezoneId
+        );
+
         return Coordinates(position.latitude, position.longitude);
 
       } catch (e) {
@@ -124,6 +136,21 @@ class LocationService {
     return Coordinates(21.4225, 39.8262); // Mecca
   }
 
+  Future<String?> getCountryCode(double lat, double lng) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+      if (placemarks.isNotEmpty) {
+        final code = placemarks.first.isoCountryCode?.toUpperCase();
+        debugPrint('[LocationService] Detected Country: $code');
+        return code;
+      }
+    } catch (e) {
+      debugPrint('[LocationService] Error getting country code: $e');
+    }
+    return null;
+  }
+
+
   Future<String> getLocationName(Coordinates coords) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
@@ -137,6 +164,14 @@ class LocationService {
       return "Unknown Location";
     } catch (e) {
       return "Unknown Location";
+    }
+  }
+
+  String getTimezone(double lat, double lng) {
+    try {
+      return tzmap.latLngToTimezoneString(lat, lng);
+    } catch (e) {
+      return 'UTC';
     }
   }
 }

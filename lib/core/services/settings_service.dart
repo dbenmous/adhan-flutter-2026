@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/settings_model.dart';
+import 'calculation_method_resolver.dart';
+import 'madhab_resolver.dart';
 
 class SettingsService {
   static final SettingsService _instance = SettingsService._internal();
@@ -60,18 +62,33 @@ class SettingsService {
     await saveSettings(current.copyWith(calculationMethodKey: methodKey));
   }
 
-  Future<void> setLocation(double lat, double lng) async {
+  Future<void> setLocation(double lat, double lng, String timezoneId) async {
     final current = getSettings();
     await saveSettings(current.copyWith(
       latitude: lat,
       longitude: lng,
       lastUpdated: DateTime.now(),
+      timezoneId: timezoneId,
     ));
   }
 
   Future<void> setMadhab(String madhab) async {
     final current = getSettings();
     await saveSettings(current.copyWith(madhab: madhab));
+  }
+  
+  Future<void> setMadhabOptions({required String madhab, required bool auto}) async {
+    final current = getSettings();
+    String newMadhab = madhab;
+
+    if (auto && current.countryCode != null) {
+      newMadhab = MadhabResolver.resolveToKey(current.countryCode);
+    }
+    
+    await saveSettings(current.copyWith(
+      madhab: newMadhab,
+      autoMadhab: auto,
+    ));
   }
   
   Future<void> setHighLatitudeRule(String rule) async {
@@ -89,23 +106,53 @@ class SettingsService {
     await saveSettings(current.copyWith(dstMode: mode, dstOffset: offset));
   }
   
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(areNotificationsEnabled: enabled));
+  }
+  
   Future<void> setCalculationMethodOptions({required String methodKey, required bool auto}) async {
     final current = getSettings();
+    String newMethodKey = methodKey;
+
+    if (auto && current.countryCode != null) {
+      newMethodKey = CalculationMethodResolver.resolve(current.countryCode);
+    }
+    
     await saveSettings(current.copyWith(
-        calculationMethodKey: methodKey,
+        calculationMethodKey: newMethodKey,
         autoCalculationMethod: auto
     ));
   }
 
-  Future<void> setManualLocation(double lat, double lng, String name) async {
+  Future<void> setManualLocation(double lat, double lng, String name, String timezoneId, String? countryCode) async {
     final current = getSettings();
-    await saveSettings(current.copyWith(
+    
+    // If auto-calculation is enabled, update the method based on country code
+    String methodKey = current.calculationMethodKey;
+    if (current.autoCalculationMethod) {
+       methodKey = CalculationMethodResolver.resolve(countryCode);
+    }
+    
+    // If auto-madhab is enabled, update madhab
+    String madhab = current.madhab;
+    if (current.autoMadhab) {
+       madhab = MadhabResolver.resolveToKey(countryCode);
+    }
+    
+    final nextSettings = current.copyWith(
       latitude: lat,
       longitude: lng,
       isManualLocation: true,
       manualLocationName: name,
       lastUpdated: DateTime.now(),
-    ));
+      timezoneId: timezoneId,
+      countryCode: countryCode, // Store it
+      calculationMethodKey: methodKey,
+      madhab: madhab,
+    );
+    
+    await saveSettings(nextSettings);
   }
 
   Future<void> clearManualLocation() async {
@@ -113,6 +160,39 @@ class SettingsService {
     await saveSettings(current.copyWith(
       isManualLocation: false,
       manualLocationName: null,
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(0), // Force cache invalidation
     ));
+  }
+
+  Future<void> onLocationChanged({
+    required double latitude,
+    required double longitude,
+    required String? newCountryCode,
+    required String timezoneId,
+  }) async {
+    final current = getSettings();
+    var nextSettings = current.copyWith(
+      latitude: latitude,
+      longitude: longitude,
+      timezoneId: timezoneId,
+      lastUpdated: DateTime.now(),
+      countryCode: newCountryCode, // Store it
+    );
+
+    if (current.autoCalculationMethod) {
+      final method = CalculationMethodResolver.resolve(newCountryCode);
+      if (method != current.calculationMethodKey) {
+        nextSettings = nextSettings.copyWith(calculationMethodKey: method);
+      }
+    }
+    
+    if (current.autoMadhab) {
+      final madhab = MadhabResolver.resolveToKey(newCountryCode);
+      if (madhab != current.madhab) {
+        nextSettings = nextSettings.copyWith(madhab: madhab);
+      }
+    }
+
+    await saveSettings(nextSettings);
   }
 }

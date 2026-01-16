@@ -11,12 +11,19 @@ import 'shared/widgets/custom_bottom_nav.dart';
 import 'core/services/settings_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/location_service.dart';
+import 'core/services/location_service.dart';
 import 'core/services/prayer_time_service.dart';
+import 'core/models/settings_model.dart';
+import 'dart:async';
+
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Init Services
+  tz.initializeTimeZones();
   await SettingsService().init();
   await NotificationService().init();
   await LocationService().init();
@@ -33,11 +40,19 @@ class AdhanApp extends StatefulWidget {
 
 class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
   
+  StreamSubscription<SettingsModel>? _settingsSubscription;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initialSetup();
+    
+    // Listen for settings changes to reschedule notifications immediately
+    _settingsSubscription = SettingsService().settingsStream.listen((_) {
+       debugPrint("Settings changed: Rescheduling notifications...");
+       _refreshPrayerTimes();
+    });
   }
 
   Future<void> _initialSetup() async {
@@ -61,12 +76,22 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
     // Get Settings
     final settings = settingsService.getSettings();
 
-    final prayerTimes = await prayerService.calculatePrayerTimes(coords, settings);
+    // Schedule 30 Days of Notifications for reliability
+    await notificationService.cancelAllPrayerNotifications();
     
-    // Schedule
-    await notificationService.scheduleAllPrayerNotifications(prayerTimes);
+    final now = DateTime.now();
+    for (int i = 0; i < 30; i++) {
+      final date = now.add(Duration(days: i));
+      final times = await prayerService.calculatePrayerTimes(
+        coords, 
+        settings, 
+        date: date
+      );
+      
+      await notificationService.schedulePrayerTimes(times, idOffset: i * 10);
+    }
     
-    debugPrint("Refreshed Prayer Times for $coords using ${settings.calculationMethodKey}");
+    debugPrint("Scheduled 30 days of notifications for $coords");
   }
 
   @override
@@ -85,6 +110,7 @@ class _AdhanAppState extends State<AdhanApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _settingsSubscription?.cancel();
     super.dispose();
   }
 

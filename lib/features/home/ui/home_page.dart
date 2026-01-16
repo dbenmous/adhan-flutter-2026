@@ -11,6 +11,7 @@ import '../../../core/services/location_service.dart';
 import '../../../core/services/settings_service.dart';
 import '../../../core/models/settings_model.dart';
 import 'monthly_calendar_page.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -121,6 +122,18 @@ class _HomePageState extends State<HomePage> {
     return "$hours:$minutes:$seconds";
   }
 
+
+  String _formatInTimezone(DateTime date, String format) {
+    final settings = _settingsService.getSettings();
+    try {
+      final location = tz.getLocation(settings.timezoneId);
+      final tzDate = tz.TZDateTime.from(date, location);
+      return DateFormat(format).format(tzDate);
+    } catch (e) {
+      return DateFormat(format).format(date);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,8 +152,8 @@ class _HomePageState extends State<HomePage> {
           final nextName = _nextPrayerData?['name'] ?? 'None';
           final nextTime = _nextPrayerData?['time'] as DateTime?;
 
-          final dateFormat = DateFormat('dd/MM/yyyy');
-          final timeFormat = DateFormat('HH:mm');
+          // Formats are passed to _formatInTimezone
+          const timeFormatStr = 'HH:mm';
 
           return Container(
             decoration: const BoxDecoration(
@@ -204,7 +217,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: nextTime != null ? timeFormat.format(nextTime) : '--:--',
+                                  text: nextTime != null ? _formatInTimezone(nextTime, timeFormatStr) : '--:--',
                                   style: GoogleFonts.outfit(
                                     color: Colors.white.withOpacity(0.8),
                                     fontSize: 42,
@@ -289,12 +302,12 @@ class _HomePageState extends State<HomePage> {
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       children: [
-                        _buildPrayerCard('Fajr', timeFormat.format(data.fajr), false, false, isNext: nextName == 'Fajr'),
-                        _buildPrayerCard('Sunrise', timeFormat.format(data.sunrise), false, true, isNext: nextName == 'Sunrise'),
-                        _buildPrayerCard('Dhuhr', timeFormat.format(data.dhuhr), true, false, isNext: nextName == 'Dhuhr'),
-                        _buildPrayerCard('Asr', timeFormat.format(data.asr), true, false, isNext: nextName == 'Asr'),
-                        _buildPrayerCard('Maghrib', timeFormat.format(data.maghrib), false, true, isNext: nextName == 'Maghrib'),
-                        _buildPrayerCard('Isha', timeFormat.format(data.isha), true, false, isNext: nextName == 'Isha'),
+                        _buildPrayerCard('Fajr', _formatInTimezone(data.fajr, timeFormatStr), false, false, isNext: nextName == 'Fajr'),
+                        _buildPrayerCard('Sunrise', _formatInTimezone(data.sunrise, timeFormatStr), false, true, isNext: nextName == 'Sunrise'),
+                        _buildPrayerCard('Dhuhr', _formatInTimezone(data.dhuhr, timeFormatStr), true, false, isNext: nextName == 'Dhuhr'),
+                        _buildPrayerCard('Asr', _formatInTimezone(data.asr, timeFormatStr), true, false, isNext: nextName == 'Asr'),
+                        _buildPrayerCard('Maghrib', _formatInTimezone(data.maghrib, timeFormatStr), false, true, isNext: nextName == 'Maghrib'),
+                        _buildPrayerCard('Isha', _formatInTimezone(data.isha, timeFormatStr), true, false, isNext: nextName == 'Isha'),
                       ],
                     ),
 
@@ -375,7 +388,7 @@ class _HomePageState extends State<HomePage> {
             ] else ...[
                Text(
                 label,
-                 style: GoogleFonts.outfit(color: const Color(0xFF1E1E1E), fontWeight: FontWeight.w600, fontSize: 13),
+                style: GoogleFonts.outfit(color: const Color(0xFF1E1E1E), fontWeight: FontWeight.w600, fontSize: 13),
               ),
             ]
           ],

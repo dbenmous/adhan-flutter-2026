@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:adhan/adhan.dart';
 import 'package:flutter/material.dart';
+import 'settings_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -18,7 +19,7 @@ class NotificationService {
       [
         NotificationChannel(
           channelGroupKey: 'adhan_channel_group',
-          channelKey: 'adhan_channel',
+          channelKey: 'adhan_channel_v2', // CHANGED to force update
           channelName: 'Adhan Notifications',
           channelDescription: 'Notifications for Prayer Times',
           defaultColor: const Color(0xFF5B7FFF),
@@ -52,17 +53,25 @@ class NotificationService {
     await AwesomeNotifications().cancelAll();
   }
 
-  Future<void> scheduleAllPrayerNotifications(PrayerTimes times) async {
-    await cancelAllPrayerNotifications();
-    debugPrint('=== SCHEDULING PRAYER NOTIFICATIONS ===');
+
+  Future<void> schedulePrayerTimes(PrayerTimes times, {int idOffset = 0}) async {
+    // await cancelAllPrayerNotifications(); // Removed to allow multiple calls
+    debugPrint('=== SCHEDULING PRAYER NOTIFICATIONS (${times.dateComponents.year}-${times.dateComponents.month}-${times.dateComponents.day}) ===');
+
+    final settings = SettingsService().getSettings();
+    if (!settings.areNotificationsEnabled) {
+      debugPrint('Notifications are DISABLED in settings. Skipping.');
+      return;
+    }
+
 
     final now = DateTime.now();
     final prayers = [
-      {'id': 101, 'name': 'Fajr', 'time': times.fajr},
-      {'id': 102, 'name': 'Dhuhr', 'time': times.dhuhr},
-      {'id': 103, 'name': 'Asr', 'time': times.asr},
-      {'id': 104, 'name': 'Maghrib', 'time': times.maghrib},
-      {'id': 105, 'name': 'Isha', 'time': times.isha},
+      {'id': 101 + idOffset, 'name': 'Fajr', 'time': times.fajr},
+      {'id': 102 + idOffset, 'name': 'Dhuhr', 'time': times.dhuhr},
+      {'id': 103 + idOffset, 'name': 'Asr', 'time': times.asr},
+      {'id': 104 + idOffset, 'name': 'Maghrib', 'time': times.maghrib},
+      {'id': 105 + idOffset, 'name': 'Isha', 'time': times.isha},
     ];
 
     for (var prayer in prayers) {
@@ -92,7 +101,7 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id,
-        channelKey: 'adhan_channel',
+        channelKey: 'adhan_channel_v2',
         title: title,
         body: body,
         notificationLayout: NotificationLayout.Default,
