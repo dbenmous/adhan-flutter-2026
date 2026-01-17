@@ -1,0 +1,62 @@
+[
+  {
+    "day_of_year": 1,
+    "ayah": {
+      "text": "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
+      "translation": "For indeed, with hardship [will be] ease.",
+      "surah": "Ash-Sharh 94:5"
+    },
+    "hadith": {
+      "text": "The most beloved of deeds to Allah are those that are most consistent, even if they are small.",
+      "source": "Sahih Bukhari"
+    },
+    "dua": {
+      "text": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+      "translation": "Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire."
+    },
+    "allah_name": {
+      "name": "Ar-Rahman (الرَّحْمَنُ)",
+      "meaning": "The Entirely Merciful"
+    }
+  },
+   {
+    "day_of_year": 2,
+    "ayah": {
+      "text": "اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ",
+      "translation": "Allah is the Light of the heavens and the earth.",
+      "surah": "Surah An-Nur 24:35"
+    },
+    "hadith": {
+      "text": "Actions are but by intentions.",
+      "source": "Sahih Bukhari 1"
+    },
+    "dua": {
+      "text": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى",
+      "translation": "O Allah, I ask You for guidance, piety, chastity, and self-sufficiency."
+    },
+    "allah_name": {
+      "name": "Ar-Rahim (الرَّحِيمُ)",
+      "meaning": "The Especially Merciful"
+    }
+  },
+  {
+    "day_of_year": 3,
+    "ayah": {
+      "text": "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",
+      "translation": "Unquestionably, by the remembrance of Allah hearts are assured.",
+      "surah": "Surah Ar-Ra'd 13:28"
+    },
+    "hadith": {
+      "text": "None of you will have faith till he wishes for his (Muslim) brother what he likes for himself.",
+      "source": "Sahih Bukhari 13"
+    },
+    "dua": {
+      "text": "يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ",
+      "translation": "O Turner of the hearts, make my heart firm upon Your religion."
+    },
+    "allah_name": {
+      "name": "Al-Malik (الْمَلِكُ)",
+      "meaning": "The King and Owner of Dominion"
+    }
+  }
+]

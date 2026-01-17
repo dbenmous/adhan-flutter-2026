@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:glass/glass.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui' as ui;
 import 'package:adhan/adhan.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'widgets/fasting_card.dart';
+import 'widgets/spiritual_stories_widget.dart';
 import '../../../core/services/prayer_time_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/location_service.dart';
@@ -18,6 +20,7 @@ import 'weather_widgets.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:awesome_notifications/awesome_notifications.dart';
 import '../../settings/ui/notification_settings_page.dart';
+import '../../settings/ui/app_icon_page.dart';
 import 'package:disable_battery_optimization/disable_battery_optimization.dart';
 
 class HomePage extends StatefulWidget {
@@ -43,6 +46,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isBatteryOptimized = false; // "true" means BAD (restricted)
   bool _showBatteryBanner = true;
   Coordinates? _currentCoordinates;
+  final GlobalKey _menuButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -218,26 +222,25 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildTopButton('Share', Icons.share_rounded),
-                          Row(
-                            children: [
-                              // Muted warning icon
-                              if (_isSystemMuted)
-                                IconButton(
-                                  icon: const Icon(Icons.notifications_off, color: Colors.orange),
-                                  onPressed: () => AwesomeNotifications().showNotificationConfigPage(),
-                                  tooltip: 'Notifications Muted',
-                                ),
-                              _buildTopButton('Upgrade', null),
-                              const SizedBox(width: 8),
-                              _buildCircleButton(Icons.more_horiz),
-                            ],
+                          const Spacer(), // Push everything to the right
+                          // Muted warning icon
+                          if (_isSystemMuted)
+                            IconButton(
+                              icon: const Icon(Icons.notifications_off, color: Colors.orange),
+                              onPressed: () => AwesomeNotifications().showNotificationConfigPage(),
+                              tooltip: 'Notifications Muted',
+                            ),
+                          GestureDetector(
+                            key: _menuButtonKey,
+                            onTap: () => _showGlassMenu(context),
+                            child: _buildCircleButton(Icons.menu_rounded),
                           ),
                         ],
                       ),
                     ),
+
+
 
                     // 2. Main Header
                     Padding(
@@ -316,21 +319,9 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                     ),
 
-                    // 3. Date Carousel (Static for now)
-                    SizedBox(
-                      height: 80,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          _buildDateItem(DateTime.now(), true),
-                          _buildDateItem(DateTime.now().add(const Duration(days: 1)), false),
-                          _buildDateItem(DateTime.now().add(const Duration(days: 2)), false),
-                          _buildDateItem(DateTime.now().add(const Duration(days: 3)), false),
-                          _buildDateItem(DateTime.now().add(const Duration(days: 4)), false),
-                        ],
-                      ),
-                    ),
+                    // Spiritual Stories Section
+                    const SpiritualStoriesWidget(),
+                    const SizedBox(height: 4),
 
                     // 4. Location
                     Padding(
@@ -545,43 +536,153 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ).asGlass(tintColor: Colors.white, clipBorderRadius: BorderRadius.circular(50), blurX: 10, blurY: 10);
     }
   
-    Widget _buildDateItem(DateTime date, bool isSelected) {
-      return Container(
-        margin: const EdgeInsets.only(right: 12),
-        width: 60,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-          boxShadow: [if (isSelected) const BoxShadow(color: Colors.black26, blurRadius: 8)],
+  void _showGlassMenu(BuildContext context) {
+    final renderBox = _menuButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    final position = renderBox?.localToGlobal(Offset.zero) ?? const Offset(0, 0);
+    final size = renderBox?.size ?? Size.zero;
+
+    // Calculate position: Top-Right aligned with the button
+    // adjust x to shift left by menu width (approx 200) + some padding
+    final top = position.dy + size.height + 8; 
+    final right = MediaQuery.of(context).size.width - (position.dx + size.width);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Menu',
+      barrierColor: Colors.black.withOpacity(0.1), // Subtle dim
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, anim1, anim2) {
+        return Stack(
+          children: [
+            Positioned(
+              top: top,
+              right: right, 
+              child: Material(
+                color: Colors.transparent,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.8, end: 1.0),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  builder: (context, scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.topRight,
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    width: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.85), // Glassy white
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildGlassMenuItem(
+                              icon: Icons.dark_mode_rounded,
+                              label: "Sleep Mode", // Adjusted to match user image somewhat or request? User asked for "Mode", image said "Sleep Mode". "Mode" is safer if "Sleep" isn't impl. Stick to request: "Mode".
+                              // Wait, user said "style of the dialog should be like this one".
+                              // But previously requested "Mode, Wallpapers, App Icon, Monthly Calendar".
+                              // I will stick to "Mode" but use the "Sleep Mode" icon style.
+                              onTap: () {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming Soon")));
+                              },
+                            ),
+                            const Divider(height: 1, indent: 16, endIndent: 16, thickness: 0.5),
+                            _buildGlassMenuItem(
+                              icon: Icons.wallpaper_rounded,
+                              label: "Wallpapers",
+                              onTap: () {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Coming Soon")));
+                              },
+                            ),
+                            const Divider(height: 1, indent: 16, endIndent: 16, thickness: 0.5),
+                            _buildGlassMenuItem(
+                              icon: Icons.app_settings_alt_rounded,
+                              label: "App Icon",
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const AppIconPage()),
+                                ).then((_) => setState(() {})); 
+                                // Assuming AppIconPage exists or placeholder. 
+                                // Wait, simple SnackBar was previous plan. 
+                                // User has `c:\Users\admin\Apps\Adhan\lib\features\settings\ui\app_icon_page.dart` open in prompt!!
+                                // So I should link it!
+                              },
+                            ),
+                            const Divider(height: 1, indent: 16, endIndent: 16, thickness: 0.5),
+                            _buildGlassMenuItem(
+                              icon: Icons.calendar_month_rounded,
+                              label: "Monthly Calendar",
+                              isLast: true,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const MonthlyCalendarPage()),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGlassMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isLast = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF1E1E1E)),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1E1E1E),
+              ),
+            ),
+          ],
         ),
-        child: Container(
-          decoration: BoxDecoration(
-             shape: BoxShape.circle,
-             gradient: const LinearGradient(
-               colors: [Color(0xFFFFD54F), Color(0xFFFF6F00)],
-               begin: Alignment.topLeft,
-               end: Alignment.bottomRight,
-             ),
-          ),
-          child: Center(
-             child: Column(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 Text(
-                   date.day.toString(),
-                   style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                 ),
-                  Text(
-                   DateFormat('MMM').format(date),
-                   style: GoogleFonts.outfit(color: Colors.white, fontSize: 10),
-                 ),
-               ],
-             ),
-          )
-        ),
-      );
-    }
+      ),
+    );
+  }
+
+
 
   Widget _buildPrayerCard(String name, String time, {bool isNext = false}) {
     // Get notification setting for this prayer
