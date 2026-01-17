@@ -105,15 +105,16 @@ class _QiblaPageState extends State<QiblaPage> {
     return StreamBuilder<CompassEvent>(
       stream: _qiblaService.compassStream,
       builder: (context, snapshot) {
-        // ... (Error handling remains same) ...
-        
-        final heading = snapshot.data?.heading;
-        if (heading == null) return _buildErrorPage("Device does not support Compass");
+        // Handle compass data - default to 0 if not available yet
+        final heading = snapshot.data?.heading ?? 0.0;
+        final hasCompassData = snapshot.hasData && snapshot.data?.heading != null;
 
-        final isAligned = _qiblaService.isAligned(heading, _qiblaDirection);
+        final isAligned = hasCompassData && _qiblaService.isAligned(heading, _qiblaDirection);
         
-        // Pass heading to haptic logic
-        _updateHaptics(isAligned, heading);
+        // Pass heading to haptic logic (only when compass data is valid)
+        if (hasCompassData) {
+          _updateHaptics(isAligned, heading);
+        }
 
         return Scaffold(
           // ... (Rest of UI) ...

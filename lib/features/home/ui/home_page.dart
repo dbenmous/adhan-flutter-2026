@@ -125,6 +125,10 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
         setState(() {
           _currentCountdown = nextTime.difference(now);
         });
+      } else {
+        // Prayer time has passed - need to recalculate next prayer
+        debugPrint('[HomePage] Prayer time passed, refreshing data...');
+        _refreshData();
       }
     }
   }
@@ -132,14 +136,8 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() {
-          if (_currentCountdown.inSeconds > 0) {
-            _currentCountdown = _currentCountdown - const Duration(seconds: 1);
-          } else {
-            // Refresh when countdown hits zero
-             _refreshData();
-          }
-        });
+        // Call _updateCountdown which handles both countdown and refresh logic
+        _updateCountdown();
       }
     });
   }

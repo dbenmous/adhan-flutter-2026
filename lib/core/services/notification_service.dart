@@ -10,6 +10,9 @@ import '../models/settings_model.dart';
 /// This runs in a separate isolate when the alarm fires
 @pragma('vm:entry-point')
 Future<void> alarmCallback(int id) async {
+  // 1. CRITICAL: Initialize binding for background isolate
+  WidgetsFlutterBinding.ensureInitialized();
+  
   debugPrint('=== ALARM CALLBACK FIRED WITH ID: $id ===');
   
   // 1. Initialize AwesomeNotifications in this isolate (minimal config)

@@ -683,7 +683,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(30), // Match group radius for ripple
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Container(
