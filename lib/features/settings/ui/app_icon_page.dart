@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
+import 'package:flutter_dynamic_icon_plus/flutter_dynamic_icon_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppIconPage extends StatefulWidget {
@@ -51,7 +51,7 @@ class _AppIconPageState extends State<AppIconPage> {
 
   Future<void> _loadCurrentIcon() async {
     try {
-      String? iconName = await FlutterDynamicIcon.getAlternateIconName();
+      String? iconName = await FlutterDynamicIconPlus.alternateIconName;
       
       // On Android, the library returns the alias name (e.g., MainActivityAliasGold)
       // On iOS, it returns the name defined in Info.plist (e.g., Gold)
@@ -106,7 +106,7 @@ class _AppIconPageState extends State<AppIconPage> {
       await prefs.setString('app_icon_name', name);
 
       // Change Icon
-      await FlutterDynamicIcon.setAlternateIconName(aliasName);
+      await FlutterDynamicIconPlus.setAlternateIconName(iconName: aliasName);
       
       if (mounted) {
         setState(() {

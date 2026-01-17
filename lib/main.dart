@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter/foundation.dart'; // for kDebugMode
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 import 'features/home/ui/home_page.dart';
 import 'features/qibla/ui/qibla_page.dart';
@@ -81,6 +82,9 @@ void callbackDispatcher() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize AndroidAlarmManager for reliable scheduled alarms
+  await AndroidAlarmManager.initialize();
 
   // Init Workmanager
   Workmanager().initialize(

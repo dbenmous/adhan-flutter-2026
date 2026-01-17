@@ -423,29 +423,44 @@ class _SettingsPageState extends State<SettingsPage> {
                   isDark,
                   icon: Icons.timer_outlined,
                   iconColor: Colors.orange,
-                  title: 'Test Alarm (10s)',
+                  title: 'Test Alarm (15s)',
                   value: 'Tap then LOCK screen',
                   valueColor: Colors.orange,
                   onTap: () async {
-                    await NotificationService().scheduleTestAlarm(seconds: 10);
+                    await NotificationService().scheduleTestAlarm(seconds: 15);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Alarm set for 10s! Lock your screen NOW.')),
+                        const SnackBar(content: Text('Alarm set for 15 seconds! Lock your screen NOW.')),
                       );
                     }
                   },
                 ),
                  _buildGroupTile(
                   isDark,
-                  icon: Icons.timer_10_outlined, // Using similar icon
-                  iconColor: Colors.redAccent,
-                  title: 'Test Alarm (4min)',
-                  value: 'Wait for it...',
+                  icon: Icons.timer_10_outlined,
+                  iconColor: Colors.deepOrange,
+                  title: 'Test Alarm (10min)',
+                  value: 'Lock screen and wait',
                   onTap: () async {
-                    await NotificationService().scheduleTestAlarm(seconds: 240);
+                    await NotificationService().scheduleTestAlarm(seconds: 600);
                      if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Alarm set for 4 minutes.')),
+                        const SnackBar(content: Text('Alarm set for 10 minutes.')),
+                      );
+                    }
+                  },
+                ),
+                 _buildGroupTile(
+                  isDark,
+                  icon: Icons.hourglass_bottom_rounded,
+                  iconColor: Colors.redAccent,
+                  title: 'Test Alarm (60min)',
+                  value: 'Deep Doze test',
+                  onTap: () async {
+                    await NotificationService().scheduleTestAlarm(seconds: 3600);
+                     if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Alarm set for 60 minutes.')),
                       );
                     }
                   },
