@@ -376,7 +376,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   iconColor: Colors.grey,
                   title: 'Privacy Policy',
                   value: '',
-                  onTap: () {}, 
+                  onTap: () async {
+                    final uri = Uri.parse('https://sites.google.com/view/salatepro/home');
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      debugPrint('Could not launch URL: $e');
+                    }
+                  }, 
                 ),
                 _buildGroupTile(
                   isDark,
@@ -384,7 +391,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   iconColor: Colors.amber,
                   title: 'Rate Us',
                   value: '',
-                  onTap: () {}, 
+                  onTap: () => _showRateUsDialog(context), 
                   showDivider: false
                 ),
               ]),
@@ -709,8 +716,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                 ),
-                Flexible(
-                  child: Text(
+                if (value.isNotEmpty)
+                  Text(
                     value,
                     style: GoogleFonts.outfit(
                       fontSize: 14,
@@ -718,7 +725,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
                 const SizedBox(width: 8),
                 Icon(
                   Icons.chevron_right_rounded,
@@ -739,6 +745,115 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
       ],
+    );
+  }
+
+  void _showRateUsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 28),
+            const SizedBox(width: 10),
+            Text('How do you like the app?', style: GoogleFonts.outfit(fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'Your feedback helps us improve!',
+          style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey[600]),
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.thumb_down_outlined, color: Colors.red, size: 20),
+            label: Text('Not Really', style: GoogleFonts.outfit(color: Colors.red)),
+            onPressed: () {
+              Navigator.pop(context);
+              _showFeedbackDialog(context);
+            },
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.thumb_up_rounded, color: Colors.green, size: 20),
+            label: Text('Love It!', style: GoogleFonts.outfit(color: Colors.green, fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              Navigator.pop(context);
+              // Open Play Store
+              final uri = Uri.parse('https://play.google.com/store/apps/details?id=com.adhann2026.prayertimes');
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                debugPrint('Could not launch Play Store: $e');
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeedbackDialog(BuildContext context) {
+    final TextEditingController feedbackController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 28),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('Tell us more', style: GoogleFonts.outfit(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'We\'d love to hear your thoughts! What can we improve?',
+              style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: feedbackController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: 'Your feedback...',
+                hintStyle: GoogleFonts.outfit(color: Colors.grey[400]),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.blue, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              // Silently discard the feedback
+              Navigator.pop(context);
+              // Show thank you message
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Thank you for your feedback! We\'ll work on it.'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Text('Submit', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.blue)),
+          ),
+        ],
+      ),
     );
   }
 }

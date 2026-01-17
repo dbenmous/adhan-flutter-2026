@@ -267,6 +267,13 @@ class NotificationService {
   }
 
   Future<void> requestPermissions() async {
+    // Check if permissions are already granted to avoid opening settings every time
+    final isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    if (isAllowed) {
+      debugPrint('[NotificationService] Permissions already granted, skipping request.');
+      return;
+    }
+    
     await AwesomeNotifications().requestPermissionToSendNotifications(
       channelKey: 'channel_adhan',
       permissions: [

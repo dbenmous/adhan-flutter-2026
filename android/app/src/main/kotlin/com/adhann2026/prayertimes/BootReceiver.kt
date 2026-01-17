@@ -1,4 +1,4 @@
-package com.example.adhan
+package com.adhann2026.prayertimes
 
 import android.content.BroadcastReceiver
 import android.content.Context
