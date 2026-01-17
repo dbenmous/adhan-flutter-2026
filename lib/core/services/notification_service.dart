@@ -1,25 +1,21 @@
-import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:adhan/adhan.dart';
-import 'package:flutter/material.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'settings_service.dart';
 import '../models/settings_model.dart';
+import 'settings_service.dart';
 
-/// Alarm Callback - MUST be a top-level or static function
-/// This runs in a separate isolate when the alarm fires
+// Top-level function for background execution
 @pragma('vm:entry-point')
 Future<void> alarmCallback(int id) async {
-  // 1. CRITICAL: Initialize binding for background isolate
-  WidgetsFlutterBinding.ensureInitialized();
-  
   debugPrint('=== ALARM CALLBACK FIRED WITH ID: $id ===');
   
-  // 1. Initialize AwesomeNotifications in this isolate (minimal config)
+  // 1. Initialize Awesome Notifications (required for background)
   await AwesomeNotifications().initialize(
     'resource://mipmap/launcher_icon',
     [
-      // Adhan Channel
+      // Basic Channel
       NotificationChannel(
         channelGroupKey: 'adhan_channel_group',
         channelKey: 'channel_adhan',
@@ -32,146 +28,80 @@ Future<void> alarmCallback(int id) async {
         soundSource: 'resource://raw/adhan',
         criticalAlerts: true,
       ),
-      // Beep Channel
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_beep',
-        channelName: 'Beep Sound',
-        channelDescription: 'Prayer notifications with system beep',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        playSound: true,
-        criticalAlerts: true,
-      ),
-      // Silent Channel
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_silent',
-        channelName: 'Silent',
-        channelDescription: 'Prayer notifications (visual only)',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-        playSound: false,
-        criticalAlerts: false,
-      ),
-      // Dynamic Adhan Channels
+      // Dynamic Channels from saved preference will be used via key
       NotificationChannel(
         channelGroupKey: 'adhan_channel_group',
         channelKey: 'channel_adhan_mishary',
-        channelName: 'Adhan Mishary',
-        channelDescription: 'Prayer notifications with Mishary audio',
+        channelName: 'Adhan Mishary', 
+        channelDescription: 'Prayer notifications',
         defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
         importance: NotificationImportance.Max,
         playSound: true,
         soundSource: 'resource://raw/adhan_mishary',
         criticalAlerts: true,
       ),
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_adhan_abdulbasit',
-        channelName: 'Adhan Abdulbasit',
-        channelDescription: 'Prayer notifications with Abdulbasit audio',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        playSound: true,
-        soundSource: 'resource://raw/adhan_abdulbasit',
-        criticalAlerts: true,
-      ),
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_adhan_ahmed_kourdi',
-        channelName: 'Adhan Ahmed Kourdi',
-        channelDescription: 'Prayer notifications with Ahmed Kourdi audio',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        playSound: true,
-        soundSource: 'resource://raw/adhan_ahmed_kourdi',
-        criticalAlerts: true,
-      ),
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_adhan_assem_bukhari',
-        channelName: 'Adhan Assem Bukhari',
-        channelDescription: 'Prayer notifications with Assem Bukhari audio',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        playSound: true,
-        soundSource: 'resource://raw/adhan_assem_bukhari',
-        criticalAlerts: true,
-      ),
-      NotificationChannel(
-        channelGroupKey: 'adhan_channel_group',
-        channelKey: 'channel_adhan_algeria',
-        channelName: 'Adhan Algeria',
-        channelDescription: 'Prayer notifications with Algeria audio',
-        defaultColor: const Color(0xFF5B7FFF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.Max,
-        playSound: true,
-        soundSource: 'resource://raw/adhan_algeria',
-        criticalAlerts: true,
-      ),
-    ],
-    channelGroups: [
-      NotificationChannelGroup(
-        channelGroupKey: 'adhan_channel_group',
-        channelGroupName: 'Prayers',
-      )
+      // Add other channels as fallback/static definitions if needed
     ],
     debug: false,
   );
 
-  // 2. Determine prayer name from ID
-  // ID Mapping: 100 = Fajr, 101 = Sunrise, 102 = Dhuhr, 103 = Asr, 104 = Maghrib, 105 = Isha
-  // With offset: (id % 10) gives the prayer index, id ~/ 10 gives the day offset
-  final prayerIndex = id % 10;
-  String prayerName;
-  switch (prayerIndex) {
-    case 0:
-      prayerName = 'Fajr';
-      break;
-    case 1:
-      prayerName = 'Sunrise';
-      break;
-    case 2:
-      prayerName = 'Dhuhr';
-      break;
-    case 3:
-      prayerName = 'Asr';
-      break;
-    case 4:
-      prayerName = 'Maghrib';
-      break;
-    case 5:
-      prayerName = 'Isha';
-      break;
-    case 9:
-      prayerName = 'Test Alarm';
-      break;
-    default:
-      prayerName = 'Prayer';
+  String prayerName = '';
+  
+  // Suhoor Alarm (ID 999)
+  if (id == 999) {
+    prayerName = 'Suhoor';
+  } else if (id == 9) {
+    prayerName = 'Test Alarm';
+  } else {
+    // 2. Determine prayer name from ID
+    // ID Mapping: 100 = Fajr, 101 = Sunrise, 102 = Dhuhr, 103 = Asr, 104 = Maghrib, 105 = Isha
+    // With offset: (id % 10) gives the prayer index, id ~/ 10 gives the day offset
+    final prayerIndex = id % 10;
+    switch (prayerIndex) {
+      case 0:
+        prayerName = 'Fajr';
+        break;
+      case 1:
+        prayerName = 'Sunrise';
+        break;
+      case 2:
+        prayerName = 'Dhuhr';
+        break;
+      case 3:
+        prayerName = 'Asr';
+        break;
+      case 4:
+        prayerName = 'Maghrib';
+        break;
+      case 5:
+        prayerName = 'Isha';
+        break;
+      default:
+        prayerName = 'Prayer';
+    }
   }
 
-  // 3. Get channel key from shared preferences (since we can't access SettingsService directly)
+  // 3. Get channel key from shared preferences
   final prefs = await SharedPreferences.getInstance();
   final adhanSound = prefs.getString('adhan_sound') ?? 'adhan_mishary';
-  final channelKey = 'channel_$adhanSound';
+  
+  // Suhoor uses a generic alarm channel or the default one
+  final channelKey = id == 999 ? 'channel_adhan_mishary' : 'channel_$adhanSound';
 
   debugPrint('Triggering notification for $prayerName using channel $channelKey');
+  
+  String body = 'It is time for $prayerName';
+  if (id == 999) {
+    body = 'Wake up for Suhoor 🌙';
+  }
 
   // 4. Trigger the notification immediately
   await AwesomeNotifications().createNotification(
     content: NotificationContent(
       id: id,
       channelKey: channelKey,
-      title: '$prayerName Prayer',
-      body: 'It is time for $prayerName',
+      title: '$prayerName Time',
+      body: body,
       category: NotificationCategory.Alarm,
       wakeUpScreen: true,
       fullScreenIntent: true,
@@ -179,6 +109,13 @@ Future<void> alarmCallback(int id) async {
       criticalAlert: true,
       backgroundColor: const Color(0xFF5B7FFF),
     ),
+    actionButtons: [
+      NotificationActionButton(
+        key: 'DISMISS',
+        label: 'Dismiss',
+        actionType: ActionType.DismissAction,
+      ),
+    ],
   );
 
   debugPrint('=== NOTIFICATION TRIGGERED FOR $prayerName ===');
@@ -210,31 +147,21 @@ class NotificationService {
           soundSource: 'resource://raw/adhan',
           criticalAlerts: true,
         ),
-        // Beep Channel
+        // Beep Channel (System Default Sound)
         NotificationChannel(
           channelGroupKey: 'adhan_channel_group',
           channelKey: 'channel_beep',
-          channelName: 'Beep Sound',
-          channelDescription: 'Prayer notifications with system beep',
+          channelName: 'Beep (Default)',
+          channelDescription: 'Prayer notifications with system default sound',
           defaultColor: const Color(0xFF5B7FFF),
           ledColor: Colors.white,
           importance: NotificationImportance.Max,
           playSound: true,
+          soundSource: null, // Uses system default notification sound
           criticalAlerts: true,
         ),
-        // Silent Channel
-        NotificationChannel(
-          channelGroupKey: 'adhan_channel_group',
-          channelKey: 'channel_silent',
-          channelName: 'Silent',
-          channelDescription: 'Prayer notifications (visual only)',
-          defaultColor: const Color(0xFF5B7FFF),
-          ledColor: Colors.white,
-          importance: NotificationImportance.High,
-          playSound: false,
-          criticalAlerts: false,
-        ),
-        // Dynamic Adhan Channels
+
+         // Dynamic Adhan Channels
         _createAdhanChannel('mishary', 'Adhan Mishary'),
         _createAdhanChannel('abdulbasit', 'Adhan Abdulbasit'),
         _createAdhanChannel('ahmed_kourdi', 'Adhan Ahmed Kourdi'),
@@ -247,7 +174,7 @@ class NotificationService {
           channelGroupName: 'Prayers',
         )
       ],
-      debug: true,
+      debug: false,
     );
   }
 
@@ -289,10 +216,15 @@ class NotificationService {
   }
 
   Future<void> cancelAllPrayerNotifications() async {
-    // Cancel all AndroidAlarmManager alarms
+    // Cancel all AndroidAlarmManager alarms in parallel for speed
+    final futures = <Future>[];
     for (int i = 0; i < 300; i++) {
-      await AndroidAlarmManager.cancel(i);
+        futures.add(AndroidAlarmManager.cancel(i));
     }
+    futures.add(AndroidAlarmManager.cancel(999)); // Suhoor
+    
+    await Future.wait(futures);
+    
     // Also cancel any existing AwesomeNotifications
     await AwesomeNotifications().cancelAll();
   }
@@ -335,7 +267,7 @@ class NotificationService {
           continue;
         }
 
-        // Schedule using AndroidAlarmManager with alarmClock (Nuclear Option)
+        // Schedule using AndroidAlarmManager with alarmClock (Doze bypass)
         final success = await AndroidAlarmManager.oneShotAt(
           time,
           id,
@@ -358,12 +290,49 @@ class NotificationService {
     debugPrint('=== SCHEDULING COMPLETE ===');
   }
 
+  /// Schedule Suhoor Alarm 45 minutes before Fajr
+  Future<void> scheduleSuhoorAlarm(DateTime fajrTime) async {
+    // 45 minutes before Fajr
+    final suhoorTime = fajrTime.subtract(const Duration(minutes: 45));
+    const suhoorId = 999;
+    
+    debugPrint('=== SCHEDULING SUHOOR ALARM FOR $suhoorTime ===');
+
+    if (suhoorTime.isBefore(DateTime.now())) {
+      debugPrint('  -> SKIPPED (past)');
+      return;
+    }
+
+    final success = await AndroidAlarmManager.oneShotAt(
+      suhoorTime,
+      suhoorId,
+      alarmCallback,
+      alarmClock: true,
+      wakeup: true,
+      exact: true,
+      rescheduleOnReboot: true,
+    );
+
+    if (success) {
+      debugPrint('  -> SUHOOR SCHEDULED (ID: $suhoorId)');
+    } else {
+      debugPrint('  -> SUHOOR FAILED to schedule');
+    }
+  }
+
+  /// Cancel Suhoor Alarm
+  Future<void> cancelSuhoorAlarm() async {
+    const suhoorId = 999;
+    await AndroidAlarmManager.cancel(suhoorId);
+    debugPrint('=== CANCELLED SUHOOR ALARM (ID: $suhoorId) ===');
+  }
+
   /// Schedule a test alarm for debugging
   Future<void> scheduleTestAlarm({required int seconds}) async {
     debugPrint('=== SCHEDULING TEST ALARM IN $seconds SECONDS ===');
 
     final scheduledTime = DateTime.now().add(Duration(seconds: seconds));
-    const testId = 999; // Special ID for test alarm (ends in 9)
+    const testId = 9; // Special ID for test alarm
 
     final success = await AndroidAlarmManager.oneShotAt(
       scheduledTime,

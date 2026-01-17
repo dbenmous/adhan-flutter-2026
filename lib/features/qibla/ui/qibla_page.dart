@@ -24,6 +24,7 @@ class _QiblaPageState extends State<QiblaPage> {
   double _qiblaDirection = 0.0;
   String _locationName = "Loading...";
   bool _isLoading = true;
+  bool _isUsingCachedLocation = false; // Flag for cached/fallback location
   
   // Haptic State
   DateTime _lastHapticTime = DateTime.now();
@@ -37,16 +38,45 @@ class _QiblaPageState extends State<QiblaPage> {
   }
 
   Future<void> _initData() async {
-    final coords = await _locationService.getCurrentLocation();
-    final locationName = await _locationService.getLocationName(coords);
-    final qibla = _qiblaService.calculateQiblaDirection(coords.latitude, coords.longitude);
+    try {
+      final coords = await _locationService.getCurrentLocation();
+      final locationName = await _locationService.getLocationName(coords);
+      final qibla = _qiblaService.calculateQiblaDirection(coords.latitude, coords.longitude);
 
-    if (mounted) {
-      setState(() {
-        _qiblaDirection = qibla;
-        _locationName = locationName;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _qiblaDirection = qibla;
+          _locationName = locationName;
+          _isLoading = false;
+          _isUsingCachedLocation = false;
+        });
+      }
+    } catch (e) {
+      // Location permission denied or error - try to use cached location
+      debugPrint('[QiblaPage] Location error: $e, trying cached location...');
+      
+      final cachedCoords = await _locationService.getCachedLocation();
+      if (cachedCoords != null) {
+        final locationName = await _locationService.getLocationName(cachedCoords);
+        final qibla = _qiblaService.calculateQiblaDirection(cachedCoords.latitude, cachedCoords.longitude);
+        
+        if (mounted) {
+          setState(() {
+            _qiblaDirection = qibla;
+            _locationName = "$locationName (cached)";
+            _isLoading = false;
+            _isUsingCachedLocation = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _locationName = "Location unavailable";
+            _isLoading = false;
+            _isUsingCachedLocation = true;
+          });
+        }
+      }
     }
   }
 
@@ -152,7 +182,11 @@ class _QiblaPageState extends State<QiblaPage> {
                          const SizedBox(height: 5),
                          Text(
                            _locationName,
-                           style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                           style: GoogleFonts.outfit(
+                             color: _isUsingCachedLocation ? Colors.orange : Colors.white, 
+                             fontSize: 18, 
+                             fontWeight: FontWeight.bold,
+                           ),
                          ),
                          if (!_isLoading)
                            Text(

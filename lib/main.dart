@@ -105,7 +105,12 @@ Future<void> main() async {
   // Init Services
   tz.initializeTimeZones();
   await SettingsService().init();
-  await NotificationService().init();
+  
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    debugPrint("Failed to initialize NotificationService: $e");
+  }
   await LocationService().init();
 
   // Check if onboarding is complete
@@ -152,12 +157,19 @@ class _AdhanAppState extends State<AdhanApp> {
     final bool onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
     
     if (onboardingComplete) {
-      await NotificationService().requestPermissions();
-      await _refreshPrayerTimes();
+      // Run permission request and notification scheduling in background
+      // Don't block the UI
+      NotificationService().requestPermissions();
+      
+      // Schedule notifications in the background (don't await)
+      Future.microtask(() => _refreshPrayerTimes());
     }
   }
 
   Future<void> _refreshPrayerTimes() async {
+    // Wait 3 seconds after startup for smoother UI
+    await Future.delayed(const Duration(seconds: 3));
+    
     final locationService = LocationService();
     final prayerService = PrayerTimeService();
     final settingsService = SettingsService();
@@ -168,8 +180,12 @@ class _AdhanAppState extends State<AdhanApp> {
     // Get Settings
     final settings = settingsService.getSettings();
 
+    // CRITICAL: Cancel all existing alarms before re-scheduling
+    // This prevents duplicate notifications when app restarts
+    await notificationService.cancelAllPrayerNotifications();
+    debugPrint('[Main] Cancelled all existing alarms before re-scheduling');
+
     // Schedule 30 Days of Notifications for reliability
-    
     final now = DateTime.now();
     for (int i = 0; i < 30; i++) {
       final date = now.add(Duration(days: i));

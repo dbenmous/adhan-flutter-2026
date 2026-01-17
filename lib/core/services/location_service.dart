@@ -136,6 +136,15 @@ class LocationService {
     return Coordinates(21.4225, 39.8262); // Mecca
   }
 
+  /// Returns cached location from settings, or null if not available
+  Future<Coordinates?> getCachedLocation() async {
+    final settings = _settingsService.getSettings();
+    if (settings.latitude != null && settings.longitude != null) {
+      return Coordinates(settings.latitude!, settings.longitude!);
+    }
+    return null;
+  }
+
   Future<String?> getCountryCode(double lat, double lng) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);

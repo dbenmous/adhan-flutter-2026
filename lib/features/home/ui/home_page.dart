@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +6,8 @@ import 'package:glass/glass.dart';
 import 'package:intl/intl.dart';
 import 'package:adhan/adhan.dart';
 import 'package:hijri/hijri_calendar.dart';
+import 'package:share_plus/share_plus.dart';
+import 'widgets/fasting_card.dart';
 import '../../../core/services/prayer_time_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/location_service.dart';
@@ -39,6 +42,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isSystemMuted = false;
   bool _isBatteryOptimized = false; // "true" means BAD (restricted)
   bool _showBatteryBanner = true;
+  Coordinates? _currentCoordinates;
 
   @override
   void initState() {
@@ -103,6 +107,7 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final hijri = _prayerService.getHijriDate(DateTime.now(), settings.hijriAdjustmentDays);
       if (mounted) {
         setState(() {
+           _currentCoordinates = coords; // Store for FastingCard
            _hijriDateString = "${hijri.hDay} ${hijri.longMonthName} ${hijri.hYear}";
         });
       }
@@ -373,7 +378,15 @@ class HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ],
                     ),
 
-                    // 6. Battery Warning Widget (New Position)
+                    // 6. Fasting Card (Sunnah Module)
+                    FastingCard(
+                      prayerTimes: data,
+                      date: DateTime.now(),
+                      settings: _settingsService.getSettings(),
+                      coordinates: _currentCoordinates,
+                    ),
+
+                    // 7. Battery Warning Widget (New Position)
                     _buildBatteryWarning(),
 
                     // 7. Calendar Banner

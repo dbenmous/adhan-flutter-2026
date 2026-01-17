@@ -100,6 +100,11 @@ class SettingsService {
     final current = getSettings();
     await saveSettings(current.copyWith(manualCorrectionsMinutes: corrections));
   }
+  
+  Future<void> setHijriAdjustment(int days) async {
+    final current = getSettings();
+    await saveSettings(current.copyWith(hijriAdjustmentDays: days));
+  }
 
   Future<void> setDstSettings({required String mode, required int offset}) async {
     final current = getSettings();

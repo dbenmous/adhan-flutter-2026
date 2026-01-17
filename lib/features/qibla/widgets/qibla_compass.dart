@@ -17,105 +17,164 @@ class QiblaCompass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedRotation(
-      turns: -heading / 360, // Rotate the whole dial to match magnetic North
-      duration: const Duration(milliseconds: 200), // Smooth out sensor jitter
-      curve: Curves.easeOut,
-      child: SizedBox(
-        width: 300,
-        height: 300,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // 1. Compass Dial (Background)
-            Image.asset(
-              'assets/images/compass_bg.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => _buildDefaultDial(context),
+    return SizedBox(
+      width: 340,
+      height: 340,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 1. Compass Dial (Rotates with heading)
+          AnimatedRotation(
+            turns: -heading / 360,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: SizedBox(
+              width: 280,
+              height: 280,
+              child: CustomPaint(
+                painter: CompassDialPainter(isAligned: isAligned),
+              ),
             ),
+          ),
 
-            // 2. Kaaba Indicator (Rotated to relative bearing)
-            // The dial "N" is at 0 (Top).
-            // We rotate an invisible container by 'qiblaDirection' 
-            // and place the Kaaba at the top of that container.
-            RotationTransition(
-              turns: AlwaysStoppedAnimation(qiblaDirection / 360),
+          // 2. Kaaba Indicator OUTSIDE the circle
+          // Positioned relative to the widget, NOT rotating with dial
+          AnimatedRotation(
+            turns: (qiblaDirection - heading) / 360,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            child: SizedBox(
+              width: 340,
+              height: 340,
               child: Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 20), // Inset from edge
-                  child: Transform.rotate(
-                    angle: - (qiblaDirection * (math.pi / 180)), // Counter-rotate icon to keep it upright? 
-                    // No, usually markers rotate with the dial. Let's keep it fixed to the ring.
-                    // Actually, Kaaba icon usually stands upright relative to the screen?
-                    // If I don't counter-rotate, the Kaaba icon will be upside down when facing South.
-                    // Let's counter-rotate it so it's always "Up" relative to the view?
-                    // But standard compass apps: markers rotate WITH the dial.
-                    // I'll leave it rotating with the dial for realism.
-                    child: KaabaIndicator(isAligned: isAligned),
-                  ),
+                  padding: const EdgeInsets.only(top: 0),
+                  child: KaabaIndicator(isAligned: isAligned),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultDial(BuildContext context) {
-    // Custom painted dial if asset is missing
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF2C2C2C),
-        border: Border.all(color: isAligned ? Colors.amber : Colors.white24, width: 4),
-        boxShadow: [
-           BoxShadow(
-             color: Colors.black.withOpacity(0.3),
-             blurRadius: 20,
-             spreadRadius: 5,
-           )
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Cardinal Points
-          _buildCardinalPoint('N', Alignment.topCenter, Colors.red),
-          _buildCardinalPoint('S', Alignment.bottomCenter, Colors.white),
-          _buildCardinalPoint('E', Alignment.centerRight, Colors.white),
-          _buildCardinalPoint('W', Alignment.centerLeft, Colors.white),
-          
-          // Ticks (Simplified)
-          Center(
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white12, width: 1),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCardinalPoint(String text, Alignment alignment, Color color) {
-    return Align(
-      alignment: alignment,
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Text(
-          text,
-          style: GoogleFonts.outfit(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
+class CompassDialPainter extends CustomPainter {
+  final bool isAligned;
+
+  CompassDialPainter({required this.isAligned});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Background circle
+    final bgPaint = Paint()
+      ..color = const Color(0xFF2C2C2C)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Outer ring
+    final ringPaint = Paint()
+      ..color = isAligned ? Colors.amber : Colors.white24
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(center, radius - 2, ringPaint);
+
+    // Draw tick marks
+    final tickPaint = Paint()
+      ..color = Colors.white54
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final smallTickPaint = Paint()
+      ..color = Colors.white30
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (int i = 0; i < 360; i += 5) {
+      final angle = (i - 90) * math.pi / 180;
+      final isCardinal = i % 90 == 0;
+      final isIntercardinal = i % 45 == 0 && !isCardinal;
+      final isMajor = i % 30 == 0;
+      
+      double tickLength;
+      Paint paint;
+      
+      if (isCardinal || isIntercardinal) {
+        // Skip - we'll draw text here
+        continue;
+      } else if (isMajor) {
+        tickLength = 15;
+        paint = tickPaint;
+      } else {
+        tickLength = 8;
+        paint = smallTickPaint;
+      }
+      
+      final outerPoint = Offset(
+        center.dx + (radius - 10) * math.cos(angle),
+        center.dy + (radius - 10) * math.sin(angle),
+      );
+      final innerPoint = Offset(
+        center.dx + (radius - 10 - tickLength) * math.cos(angle),
+        center.dy + (radius - 10 - tickLength) * math.sin(angle),
+      );
+      
+      canvas.drawLine(outerPoint, innerPoint, paint);
+    }
+
+    // Draw cardinal and intercardinal points
+    _drawDirectionText(canvas, center, radius, 'N', 0, Colors.red);
+    _drawDirectionText(canvas, center, radius, 'NE', 45, Colors.white70);
+    _drawDirectionText(canvas, center, radius, 'E', 90, Colors.white);
+    _drawDirectionText(canvas, center, radius, 'SE', 135, Colors.white70);
+    _drawDirectionText(canvas, center, radius, 'S', 180, Colors.white);
+    _drawDirectionText(canvas, center, radius, 'SW', 225, Colors.white70);
+    _drawDirectionText(canvas, center, radius, 'W', 270, Colors.white);
+    _drawDirectionText(canvas, center, radius, 'NW', 315, Colors.white70);
+
+    // Inner decorative circle
+    final innerRingPaint = Paint()
+      ..color = Colors.white12
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawCircle(center, radius - 50, innerRingPaint);
+  }
+
+  void _drawDirectionText(Canvas canvas, Offset center, double radius, 
+      String text, double degrees, Color color) {
+    final angle = (degrees - 90) * math.pi / 180;
+    final textRadius = radius - 30;
+    final isIntercardinal = text.length == 2;
+    
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: isIntercardinal ? 12 : 20,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Outfit',
         ),
       ),
+      textDirection: TextDirection.ltr,
     );
+    textPainter.layout();
+    
+    final textOffset = Offset(
+      center.dx + textRadius * math.cos(angle) - textPainter.width / 2,
+      center.dy + textRadius * math.sin(angle) - textPainter.height / 2,
+    );
+    
+    textPainter.paint(canvas, textOffset);
+  }
+
+  @override
+  bool shouldRepaint(CompassDialPainter oldDelegate) {
+    return oldDelegate.isAligned != isAligned;
   }
 }

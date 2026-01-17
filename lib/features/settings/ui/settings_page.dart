@@ -9,6 +9,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/prayer_time_service.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Added import for SharedPreferences
+import 'widgets/hijri_adjustment_tile.dart'; // Add widget import
 
 import 'calculation_methods_page.dart';
 import 'manual_corrections_page.dart';
@@ -43,6 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _adhanSoundName = 'Default';
   bool? _isBatteryOptimized; // null=loading, true=unrestricted(good), false=restricted(bad)
   String _appIconName = 'Default'; // Add state variable
+  int _hijriAdjustment = 0; // Add state variable
 
   @override
   void initState() {
@@ -83,6 +85,7 @@ class _SettingsPageState extends State<SettingsPage> {
       // Basic formatting for display
       _adhanSoundName = settings.adhanSound.replaceAll('adhan_', '').replaceAll('_', ' ').toUpperCase();
       _appIconName = prefs.getString('app_icon_name') ?? 'Default'; // Load icon name
+      _hijriAdjustment = settings.hijriAdjustmentDays; // Load values
     });
   }
 
@@ -257,6 +260,18 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => Navigator.push(
                     context, 
                     MaterialPageRoute(builder: (_) => const JuristicMethodPage())
+                  ),
+                ),
+                Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 16),
+                   child: HijriAdjustmentTile(currentAdjustment: _hijriAdjustment),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1, 
+                    thickness: 0.5,
+                    color: isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0)
                   ),
                 ),
                 _buildGroupTile(
